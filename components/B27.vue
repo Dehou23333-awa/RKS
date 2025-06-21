@@ -243,42 +243,55 @@ import '~/assets/b27/b27.css';
 // Add the font adjustment function and event listeners
 function adjustFontSize() {
     //获取p元素
-    let a = document.getElementsByName("pvis");
-    for (let i = 0; i < a.length; ++i) {
-        let songName = a[i];
+    let pvisElements = document.getElementsByName("pvis");
 
-        if (!songName) continue;
+    for (let i = 0; i < pvisElements.length; ++i) {
+        let songName = pvisElements[i];
 
-        /*调整曲目名称字体大小*/
+        if (!songName || !songName.parentElement) {
+            continue;
+        }
+
         let parentElement = songName.parentElement;
-        let maxFontSize = 100; //设置最大字体大小
+
+        let maxFontSize = 100; // 设置最大字体大小
+        let minFontSize = 11;
+
         songName.style.fontSize = maxFontSize + "px";
 
-        // 如果字体宽度大于父元素宽度，则减小字体大小
-        let fontSize = maxFontSize;
-        songName.style.fontSize = fontSize + "px";
+        let currentFontSize = maxFontSize;
 
-        // 使用倍增算法快速减小字体大小
         while (
-            songName.scrollWidth > parentElement.offsetWidth ||
-            songName.scrollHeight > parentElement.offsetHeight
+            (songName.scrollWidth > parentElement.offsetWidth ||
+            songName.scrollHeight > parentElement.offsetHeight) &&
+            currentFontSize > minFontSize // 确保不会低于最小字体
         ) {
-            fontSize = Math.floor(fontSize / 2);
-            songName.style.fontSize = fontSize + "px";
+            currentFontSize -= 1; // 每次减小1px
+            songName.style.fontSize = currentFontSize + "px";
         }
 
         // 逐步增加字体大小，找到最合适的大小
+        // 确保不会超出maxFontSize，并且不会导致溢出
         while (
             songName.scrollWidth <= parentElement.offsetWidth &&
             songName.scrollHeight <= parentElement.offsetHeight &&
-            fontSize < maxFontSize
+            currentFontSize < maxFontSize
         ) {
-            fontSize += 1;
-            songName.style.fontSize = fontSize + "px";
+            currentFontSize += 1;
+            songName.style.fontSize = currentFontSize + "px";
         }
 
-        // 回退到合适的字体大小
-        songName.style.fontSize = fontSize - 1 + "px";
+        // 回退到合适的字体大小 (如果上一个循环多加了1px导致溢出)
+        // 只有当多加1px后导致溢出时才回退，否则保持当前大小
+        if (songName.scrollWidth > parentElement.offsetWidth || songName.scrollHeight > parentElement.offsetHeight) {
+             songName.style.fontSize = (currentFontSize - 1) + "px";
+        }
+
+        // 确保最终字体不小于最小字体
+        if (parseFloat(songName.style.fontSize) < minFontSize) {
+            console.log(`字体大小${parseFloat(songName.style.fontSize)}小于最小值，设置为最小值`);
+            songName.style.fontSize = minFontSize + "px";
+        }
     }
 }
 
