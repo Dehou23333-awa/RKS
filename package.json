@@ -10,18 +10,15 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.10.0",
     "dom-to-image-more": "^3.6.0",
     "js-cookie": "^3.0.5",
     "jszip": "^3.10.1",
     "node-fetch": "^3.3.2",
-    "nuxt": "^3.17.4",
+    "nuxt": "^3.17.5",
     "qiniu": "^7.14.0",
     "qrcode.vue": "^3.6.0",
-    "vue": "^3.5.15",
+    "vue": "^3.5.17",
     "vue-router": "^4.5.1"
-  },
-  "devDependencies": {
-    "@nuxtjs/tailwindcss": "^7.0.0-beta.0"
   }
 }
