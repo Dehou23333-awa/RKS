@@ -59,8 +59,9 @@ const isExporting = ref(false);
 const error = ref(null);
 
 // --- 辅助函数 ---
-const getRatingFromScore = (score) => {
+const getRatingFromScore = (score, fc) => {
   if (score === 1000000) return 'phi';
+  if (fc) return 'FC';
   if (score > 960000) return 'V';
   if (score > 920000) return 'S';
   if (score > 880000) return 'A';
@@ -130,7 +131,7 @@ const generateReport = async () => {
         rank: song.level,
         difficulty: song.difficulty,
         rks: song.rks,
-        Rating: getRatingFromScore(song.score),
+        Rating: getRatingFromScore(song.score, song.fc),
         score: song.score,
         acc: song.acc,
         suggest: getSuggest(song.acc, song.fc),
@@ -191,7 +192,7 @@ const exportAsImage = async () => {
     const dataUrl = await domtoimage.toPng(node, options);
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `Phigros-B27-Report-${reportData.value.gameuser.PlayerId}-${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `Phigros-B27-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

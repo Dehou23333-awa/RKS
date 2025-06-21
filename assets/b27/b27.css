@@ -355,7 +355,7 @@ body p {
 
 .song .ill-box {
     width: 50%;
-    height: auto;
+    height: 95px;
     z-index: 1;
     filter: drop-shadow(2px 4px 10px #00000055);
     position: relative;
