@@ -144,7 +144,7 @@ const generateReport = async () => {
     b27Data.forEach((song, index) => {
       const transformedSong = {
         song: song.songName,
-        illustration: `https://gh-proxy.com/https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${song.songId}.png`,
+        illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
         rank: song.level,
         difficulty: song.difficulty,
         rks: song.rks,
