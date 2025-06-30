@@ -1,40 +1,59 @@
-// api/login.ts
-import type { IncomingMessage, ServerResponse } from 'http';
-import { defineEventHandler, readBody } from 'h3';
-import axios from 'axios';
-
-// Initialize a shared axios instance for consistent headers
-const taptapClient = axios.create({
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'User-Agent': 'TapTapAndroidSDK/3.16.5',
-  },
-});
-
-const phiClient = axios.create({
-  headers: {
-    'User-Agent': 'LeanCloud-CSharp-SDK/1.0.3',
-    'X-LC-Id': 'rAK3FfdieFob2Nn8Am',
-    'X-LC-Key': 'Qr9AEqtuoSVS3zeD6iVbM4ZC0AtkJcQ89tywVyi0',
-    'Content-Type': 'application/json',
-  },
-});
-
 export default defineEventHandler(async (event) => {
-  const deviceId = await readBody(event);
-  const url = 'https://www.taptap.com/oauth2/v1/device/code';
-  const payload = `client_id=rAK3FfdieFob2Nn8Am&response_type=device_code&scope=basic_info&version=1.2.0&platform=unity&info=%7b%22device_id%22%3a%22${deviceId}%22%7d`;
-
   try {
-    const response = await taptapClient.post(url, payload);
-    return response.data.data;
-  } catch (error: any) {
-    // You might want to handle errors more robustly here
-    console.error('Login error:', error.response?.data || error.message);
+    const device_id = await readBody(event);
+    const loginResponse = await login(device_id);
+    return loginResponse;
+  } catch (error) {
     throw createError({
-      statusCode: error.response?.status || 500,
-      statusMessage: error.response?.statusText || 'Internal Server Error',
-      data: error.response?.data || { message: 'An unknown error occurred' },
+      statusCode: 500,
+      statusMessage: error.message || 'Login failed'
     });
   }
 });
+
+class Share {
+  client: {
+    post: (url: string, options: any) => Promise<Response>;
+    get: (url: string, options: any) => Promise<Response>;
+  };
+  tap_headers: Record<string, string>;
+
+  constructor() {
+    this.client = {
+      post: async (url: string, options: any) => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: options.headers,
+          body: options.body,
+        });
+        return response;
+      },
+      get: async (url: string, options: any) => {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: options.headers,
+        });
+        return response;
+      },
+    };
+    this.tap_headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "TapTapAndroidSDK/3.16.5"
+    };
+  }
+}
+
+const share = new Share();
+
+async function login(device_id: string) {
+  const url = "https://www.taptap.cn/oauth2/v1/device/code";
+  const payload = `client_id=rAK3FfdieFob2Nn8Am&response_type=device_code&scope=basic_info&version=1.2.0&platform=unity&info=%7b%22device_id%22%3a%22${device_id}%22%7d`;
+
+  const response = await share.client.post(url, { 
+    headers: share.tap_headers, 
+    body: payload 
+  });
+  
+  const jsonResponseData = await response.json();
+  return jsonResponseData.data;
+}
