@@ -3,9 +3,11 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [],
   nitro: {
-    output: {
-      name: 'rks',
-    },
     preset: 'cloudflare-module',
-  },
+    cloudflare: {
+      wrangler: {
+        name: 'dehou23333-awa-rks'
+      }
+    }
+  }
 })
