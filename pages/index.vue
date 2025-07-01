@@ -25,21 +25,25 @@
   min-height: 80vh;
   background: #f0f2f5;
 }
+
 h1 {
   font-size: 2.5rem;
   margin-bottom: 1rem;
   color: #007bff;
 }
+
 p {
   font-size: 1.2rem;
   color: #555;
   margin-bottom: 2rem;
 }
+
 .btn-group {
   display: flex;
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
+
 .go-btn {
   padding: 12px 32px;
   font-size: 1.2rem;
@@ -50,12 +54,15 @@ p {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .go-btn.login-btn {
   background: #28a745;
 }
+
 .go-btn.login-btn:hover {
   background: #1e7e34;
 }
+
 .go-btn:hover {
   background: #0056b3;
 }
