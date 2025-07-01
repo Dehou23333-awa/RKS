@@ -2,16 +2,19 @@
   <div class="page-wrapper">
     <!-- 用户输入和控制区域 -->
     <div class="controls-wrapper">
-      <input 
-        v-model="sessionToken" 
-        type="text" 
-        placeholder="在此输入 Session Token"
-      />
+      <input v-model="sessionToken" type="text" placeholder="在此输入 Session Token" />
       <button @click="generateReport" :disabled="isLoading">
         {{ isLoading ? '正在生成...' : '生成B27成绩' }}
       </button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? '正在导出...' : '导出为图片' }}
+      </button>
+      <button @click="exportRecord" :disabled="!reportData">
+        导出记录
+      </button>
+      <input type="file" ref="fileInput" @change="handleFileImport" accept=".txt" style="display: none" />
+      <button @click="triggerFileInput">
+        导入记录
       </button>
     </div>
 
@@ -26,17 +29,9 @@
     <!-- B27成绩容器，现在由 reportData 驱动 -->
     <div ref="reportContainerRef" class="report-container">
       <!-- 只有在 reportData 存在时才渲染 B19Report -->
-      <B19Report 
-        v-if="reportData"
-        :gameuser="reportData.gameuser"
-        :formattedDate="reportData.Date"
-        :spInfo="reportData.spInfo"
-        :stats="reportData.stats"
-        :phi="reportData.phi"
-        :b19_list="reportData.b19_list"
-        :_plugin="reportData._plugin"
-        :Version="reportData.Version"
-      />
+      <B19Report v-if="reportData" :gameuser="reportData.gameuser" :formattedDate="reportData.Date"
+        :spInfo="reportData.spInfo" :stats="reportData.stats" :phi="reportData.phi" :b19_list="reportData.b19_list"
+        :_plugin="reportData._plugin" :Version="reportData.Version" />
       <!-- 初始状态的占位符 -->
       <div v-else-if="!isLoading && !error" class="status-placeholder">
         请输入 Session Token 并点击“生成B27成绩”。
@@ -58,6 +53,11 @@ const reportData = ref(null);
 const isLoading = ref(false);
 const isExporting = ref(false);
 const error = ref(null);
+const fileInput = ref(null);
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
 
 // --- 辅助函数 ---
 const getRatingFromScore = (score, fc) => {
@@ -119,14 +119,14 @@ const generateReport = async () => {
     ]);
 
     const challengeValue = summaryData.challenge.toString();
-    
+
     // --- 数据转换 ---
     const gameuser = {
       PlayerId: playerData.playerID,
       avatar: summaryData.avatar,
       rks: summaryData.rks,
-      ChallengeMode: challengeValue.slice(0,1), 
-      ChallengeModeRank: challengeValue.slice(1,3),
+      ChallengeMode: challengeValue.slice(0, 1),
+      ChallengeModeRank: challengeValue.slice(1, 3),
       data: getMoney(money),
     };
     const formattedDate = new Date(summaryData.updatedAt).toLocaleString('sv-SE');
@@ -136,7 +136,7 @@ const generateReport = async () => {
       { title: 'IN', cleared: summaryData.IN[0], fc: summaryData.IN[1], phi: summaryData.IN[2] },
       { title: 'AT', cleared: summaryData.AT[0], fc: summaryData.AT[1], phi: summaryData.AT[2] },
     ];
-    
+
     const phiSongs = [];
     const b19Songs = [];
     let b19Counter = 0;
@@ -156,11 +156,11 @@ const generateReport = async () => {
 
       // 判定是 Phi 还是 B19
       if (index < 3 && transformedSong.Rating === 'phi') {
-          phiSongs.push(transformedSong);
+        phiSongs.push(transformedSong);
       } else {
-          b19Counter++;
-          transformedSong.num = b19Counter;
-          b19Songs.push(transformedSong);
+        b19Counter++;
+        transformedSong.num = b19Counter;
+        b19Songs.push(transformedSong);
       }
     });
 
@@ -194,16 +194,16 @@ const exportAsImage = async () => {
     alert('没有可导出的B27成绩内容！');
     return;
   }
-  
+
   // 检测是否为移动设备
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
+
   isExporting.value = true;
   try {
     // 移动端使用较低的缩放比例和质量
     const scale = isMobile ? 1 : 2;
     const quality = isMobile ? 0.75 : 1.0;
-    
+
     const options = {
       width: node.scrollWidth * scale,
       height: node.scrollHeight * scale,
@@ -227,6 +227,74 @@ const exportAsImage = async () => {
     isExporting.value = false;
   }
 };
+const exportRecord = () => {
+  if (!reportData.value) {
+    alert('没有可导出的记录！');
+    return;
+  }
+
+  try {
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      data: {
+        playerData: reportData.value,
+      }
+    };
+
+    // 转换为JSON字符串并Base64编码
+    const jsonStr = JSON.stringify(exportData);
+    const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
+
+    // 创建并下载文件
+    const blob = new Blob([base64Data], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Phigros-B27-Record-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+  } catch (error) {
+    console.error('导出记录时发生错误:', error);
+    alert('导出记录失败，请查看控制台获取更多信息。');
+  }
+};
+const handleFileImport = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  isLoading.value = false;
+  error.value = null;
+
+  try {
+    const text = await file.text();
+    // 解码Base64数据
+    const jsonStr = decodeURIComponent(escape(atob(text)));
+    const importedData = JSON.parse(jsonStr);
+
+    // 验证导入的数据格式
+    if (!importedData.data || !importedData.data.playerData) {
+      throw new Error('无效的记录文件格式');
+    }
+
+    // 更新数据
+    sessionToken.value = '';
+    reportData.value = importedData.data.playerData;
+
+    // 显示导入成功消息
+    alert(`成功导入记录！\n记录时间: ${new Date(importedData.timestamp).toLocaleString()}`);
+
+  } catch (error) {
+    console.error('导入记录时发生错误:', error);
+    alert('导入记录失败，请确保文件格式正确。');
+    reportData.value = null;
+  } finally {
+    event.target.value = '';
+    isLoading.value = false;
+  }
+};
+
 onMounted(() => {
   // 优先从 URL 查询参数读取
   const params = new URLSearchParams(window.location.search);
@@ -273,7 +341,7 @@ body {
   padding: 1rem;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .controls-wrapper input {
