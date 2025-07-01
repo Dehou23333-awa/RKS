@@ -1,6 +1,3 @@
-<!--
-路径: pages/index.vue (Corrected Verification Logic)
--->
 <template>
   <div class="container">
     <h1>Phigros Save Tester</h1>
@@ -103,28 +100,17 @@ const saveDataString = computed({
   }
 });
 
-// Computed property for the re-parsed data (display only)
 const reParsedDataString = computed(() => reParsedData.value ? JSON.stringify(reParsedData.value, null, 2) : '');
 
-// ===================================================================
-//                        CORRECTED VERIFICATION LOGIC
-// ===================================================================
-
-/**
- * Recursively creates a new object with all its keys sorted alphabetically.
- * This is used to create a "canonical" representation for comparison.
- * @param obj The object or value to process.
- */
 function canonicalize(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
     return obj; // Return primitives as-is
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(canonicalize); // Process each item in an array
+    return obj.map(canonicalize);
   }
 
-  // Process objects: sort keys and recurse on values
   const sortedObj: Record<string, any> = {};
   Object.keys(obj).sort().forEach(key => {
     sortedObj[key] = canonicalize(obj[key]);
@@ -135,14 +121,11 @@ function canonicalize(obj: any): any {
 const isVerificationSuccessful = computed(() => {
     if (!parsedSaveData.value || !reParsedData.value) return false;
     
-    // Create canonical (key-sorted) versions of both objects and then compare their string representations.
-    // This is a robust way to check for deep equality, ignoring key order.
     const canonicalOriginal = JSON.stringify(canonicalize(parsedSaveData.value));
     const canonicalRebuilt = JSON.stringify(canonicalize(reParsedData.value));
 
     return canonicalOriginal === canonicalRebuilt;
 });
-// ===================================================================
 
 
 function clearAllState() {

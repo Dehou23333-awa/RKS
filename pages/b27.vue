@@ -8,7 +8,7 @@
         placeholder="在此输入 Session Token"
       />
       <button @click="generateReport" :disabled="isLoading">
-        {{ isLoading ? '正在生成...' : '生成报告' }}
+        {{ isLoading ? '正在生成...' : '生成B27成绩' }}
       </button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? '正在导出...' : '导出为图片' }}
@@ -23,7 +23,7 @@
       发生错误: {{ error }}
     </div>
 
-    <!-- 报告容器，现在由 reportData 驱动 -->
+    <!-- B27成绩容器，现在由 reportData 驱动 -->
     <div ref="reportContainerRef" class="report-container">
       <!-- 只有在 reportData 存在时才渲染 B19Report -->
       <B19Report 
@@ -39,7 +39,7 @@
       />
       <!-- 初始状态的占位符 -->
       <div v-else-if="!isLoading && !error" class="status-placeholder">
-        请输入 Session Token 并点击“生成报告”。
+        请输入 Session Token 并点击“生成B27成绩”。
       </div>
     </div>
   </div>
@@ -169,7 +169,7 @@ const generateReport = async () => {
       phiSongs.push(null);
     }
 
-    // 组装最终报告数据
+    // 组装最终B27成绩数据
     reportData.value = {
       gameuser,
       Date: formattedDate,
@@ -182,7 +182,7 @@ const generateReport = async () => {
     };
 
   } catch (err) {
-    console.error('生成报告失败:', err);
+    console.error('生成B27成绩失败:', err);
     error.value = err.message;
   } finally {
     isLoading.value = false;
@@ -191,7 +191,7 @@ const generateReport = async () => {
 const exportAsImage = async () => {
   const node = reportContainerRef.value;
   if (!node || !reportData.value) {
-    alert('没有可导出的报告内容！');
+    alert('没有可导出的B27成绩内容！');
     return;
   }
   isExporting.value = true;
@@ -229,9 +229,9 @@ onMounted(() => {
     generateReport();
     return;
   }
-  // 尝试从 Cookie 读取 taptap_access_token
+  // 尝试从 Cookie 读取 session_token
   try {
-    const taptapToken = Cookies.get('taptap_access_token');
+    const taptapToken = Cookies.get('session_token');
     if (taptapToken) {
       sessionToken.value = taptapToken;
       generateReport();

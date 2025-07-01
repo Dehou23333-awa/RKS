@@ -10,13 +10,10 @@ export default defineEventHandler(async (event) => {
       throw new Error('Invalid sessionToken provided.')
     }
 
-    // 1. Get save summary
     const summary = await getSummary(token)
     
-    // 2. Get the save file from the URL in the summary
     const saveFileBuffer = await getSaveFile(summary.gameFile.url, summary.gameFile.metaData._checksum)
 
-    // 3. Unzip, decrypt, and parse the save file
     const parsedSaveData = await parseSaveFile(saveFileBuffer)
 
     return {
@@ -25,7 +22,6 @@ export default defineEventHandler(async (event) => {
     }
   }
   catch (error: any) {
-    // Set the status code for errors
     event.node.res.statusCode = 400
     return {
       success: false,
