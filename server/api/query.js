@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { createDecipheriv } from 'node:crypto';
-import JSZip from 'jszip'; // Import jszip
+import JSZip from 'jszip';
 // --- Configuration (Equivalent to global_headers, key, iv) ---
 const GLOBAL_HEADERS = {
     'X-LC-Id': 'rAK3FfdieFob2Nn8Am',
@@ -35,7 +35,7 @@ class ByteReader {
     }
     readString() {
         const length = this.data[this.position];
-        this.position += 1; // Move past the length byte
+        this.position += 1;
         const strBuffer = this.data.slice(this.position, this.position + length);
         this.position += length;
         return strBuffer.toString('utf8');
@@ -49,7 +49,7 @@ class ByteReader {
     }
     readRecord(songId) {
         const recordLength = this.data[this.position];
-        const endPosition = this.position + recordLength + 1; // +1 for the length byte itself
+        const endPosition = this.position + recordLength + 1;
         this.position += 1;
         const exists = this.data[this.position];
         this.position += 1;
@@ -58,7 +58,7 @@ class ByteReader {
         const diff = difficulty[songId];
         if (!diff) {
             console.warn(`Difficulty not found for songId: ${songId}. Skipping record.`);
-            this.position = endPosition; // Skip to end to avoid errors
+            this.position = endPosition;
             return [];
         }
         const records = [];
@@ -92,33 +92,30 @@ async function readGameRecord(url) {
     }
     const zipBuffer = Buffer.from(await response.arrayBuffer());
 
-    // Use jszip to load the ZIP file and extract 'gameRecord'
     const zip = new JSZip();
     await zip.loadAsync(zipBuffer);
 
-    const gameRecordEntry = zip.file('gameRecord'); // Get the file entry
+    const gameRecordEntry = zip.file('gameRecord');
     if (!gameRecordEntry) {
         throw new Error("gameRecord file not found in the ZIP archive.");
     }
 
-    const gameRecordContent = await gameRecordEntry.async('nodebuffer'); // Get content as Buffer
+    const gameRecordContent = await gameRecordEntry.async('nodebuffer');
 
     if (gameRecordContent[0] !== 0x01) {
         throw new Error("版本号不正确，可能协议已更新。");
     }
-    return gameRecordContent.slice(1); // Return content after the version byte
+    return gameRecordContent.slice(1);
 }
 function decrypt_gameRecord(gameRecordBuffer) {
     const decipher = createDecipheriv('aes-256-cbc', AES_KEY, AES_IV);
-    decipher.setAutoPadding(false); // We will handle padding manually
+    decipher.setAutoPadding(false);
     let decrypted = decipher.update(gameRecordBuffer);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
-    // Manual unpadding (PKCS7 as per Python's Padding.unpad)
     const padLength = decrypted[decrypted.length - 1];
-    if (padLength > decrypted.length || padLength === 0) { // Add padLength === 0 check
+    if (padLength > decrypted.length || padLength === 0) {
         throw new Error('Invalid padding or no padding applied.');
     }
-    // Basic check for valid PKCS7 padding bytes
     for (let i = 0; i < padLength; i++) {
         if (decrypted[decrypted.length - 1 - i] !== padLength) {
             throw new Error('Invalid PKCS7 padding bytes.');
@@ -173,12 +170,11 @@ function parse_record(gameRecordBuffer) {
     const reader = new ByteReader(gameRecordBuffer);
     const numSongs = reader.readVarShort();
     for (let i = 0; i < numSongs; i++) {
-        const songId = reader.readString().slice(0, -2); // Python's `[:-2]`
+        const songId = reader.readString().slice(0, -2);
         const record = reader.readRecord(songId);
         records.push(...record);
     }
     records.sort((a, b) => b.rks - a.rks);
-    // Find the record with score 1000000 and max difficulty
     const phiRecords = records.filter(x => x.score === 1000000);
     let bestFcRecord = null;
     if (phiRecords.length > 0) {
@@ -219,7 +215,6 @@ async function loadChartData() {
         for (let line of infoLines) {
             line = line.trim();
             if (!line) continue;
-            // 你的 info.tsv 解析逻辑
             const parts = line.split('\t');
             const songId = parts[0];
             newSongInfo[songId] = {
@@ -273,7 +268,7 @@ async function getSummary(sessionToken) {
     const avatar = summaryBuffer.toString('utf8', 10, 10 + avatarLength);
     let currentOffset = 10 + avatarLength;
     const levelsData = [];
-    for (let i = 0; i < 12; i++) { // 12 unsigned shorts
+    for (let i = 0; i < 12; i++) {
         if (currentOffset + 2 > summaryBuffer.length) {
             console.warn("Not enough bytes for all 12 level shorts in summary. Data might be truncated.");
             break;

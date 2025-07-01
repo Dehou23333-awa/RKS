@@ -7,14 +7,13 @@
         <button class="go-btn">前往 B27 报告</button>
       </router-link>
       <router-link to="/login">
-        <button class="go-btn login-btn">立即查分</button>
+        <button class="go-btn login-btn">登录后立即查分</button>
       </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-// 首页暂不需要逻辑
 </script>
 
 <style scoped>

@@ -56,12 +56,11 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const sessionToken = ref('');
-const summaryBase64 = ref(''); // 存储编码后的 Base64 摘要
-const gameData = ref(''); // 存储文件内容的 Base64 编码
+const summaryBase64 = ref('');
+const gameData = ref('');
 const message = ref('');
 const messageClass = ref('');
 
-// 摘要参数，与后端编码逻辑保持一致
 const summaryParams = ref({
   saveVersion: 0,
   challenge: 0,
@@ -82,11 +81,9 @@ const atLevelsInput = ref('');
 
 // 解析等级输入字符串为数字数组
 const parseLevelsInput = (input) => {
-  // 过滤掉非数字和空字符串，确保数组只有3个数字
   const numbers = input.split(',')
                        .map(s => parseInt(s.trim(), 10))
                        .filter(n => !isNaN(n));
-  // 确保数组长度为3，不足补0，超出截断
   while(numbers.length < 3) numbers.push(0);
   return numbers.slice(0, 3);
 };
@@ -97,12 +94,10 @@ watch(hdLevelsInput, (val) => { summaryParams.value.HD = parseLevelsInput(val); 
 watch(inLevelsInput, (val) => { summaryParams.value.IN = parseLevelsInput(val); });
 watch(atLevelsInput, (val) => { summaryParams.value.AT = parseLevelsInput(val); });
 
-// Helper function to format level arrays into comma-separated strings
 const formatLevelsArray = (arr) => {
   return arr.join(',');
 };
 
-// Fetch and populate summary data
 const fetchSummary = async (token) => {
   message.value = '正在尝试获取当前存档摘要...';
   messageClass.value = '';
@@ -110,14 +105,12 @@ const fetchSummary = async (token) => {
     const response = await axios.get(`/api/query?action=summary&sessionToken=${token}`);
     if (response.data) {
       const data = response.data;
-      // Populate summaryParams ref
       summaryParams.value.saveVersion = data.saveVersion;
       summaryParams.value.challenge = data.challenge;
       summaryParams.value.rks = data.rks;
       summaryParams.value.gameVersion = data.gameVersion;
       summaryParams.value.avatar = data.avatar;
 
-      // Populate string inputs for level arrays
       ezLevelsInput.value = formatLevelsArray(data.EZ);
       hdLevelsInput.value = formatLevelsArray(data.HD);
       inLevelsInput.value = formatLevelsArray(data.IN);
@@ -139,17 +132,15 @@ const fetchSummary = async (token) => {
 };
 
 
-// 在组件挂载后尝试从 Cookie 读取 sessionToken 并获取摘要
 onMounted(() => {
-  const token = Cookies.get('taptap_access_token');
+  const token = Cookies.get('session_token');
   if (token) {
     sessionToken.value = token;
-    console.log('从 Cookie 读取到 taptap_access_token:', token);
-    // Fetch summary data after getting the token
+    console.log('从 Cookie 读取到 session_token:', token);
     fetchSummary(token);
   } else {
-    console.warn('Cookie 中未找到 taptap_access_token。');
-    message.value = '警告：未从 Cookie 中读取到 taptap_access_token。请确保已登录。无法获取当前存档摘要。';
+    console.warn('Cookie 中未找到 session_token。');
+    message.value = '警告：未从 Cookie 中读取到 session_token。请确保已登录。无法获取当前存档摘要。';
     messageClass.value = 'error';
   }
 });
@@ -167,8 +158,6 @@ const handleFileUpload = (event) => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      // FileReader result is a data URL like "data:application/zip;base64,UEsDBAo..."
-      // We only need the base64 part after the comma
       gameData.value = e.target.result.split(',')[1];
       message.value = `文件 "${file.name}" 已加载，等待上传。`;
       messageClass.value = 'success';
@@ -181,7 +170,7 @@ const handleFileUpload = (event) => {
   } else {
     gameData.value = '';
     message.value = '未选择文件。';
-    messageClass.value = ''; // Clear message if no file is selected
+    messageClass.value = '';
   }
 };
 
@@ -191,7 +180,6 @@ async function encodeSummaryData() {
   messageClass.value = '';
 
   try {
-    // Pass the current summaryParams value to the backend for encoding
     const response = await axios.post('/api/query?action=encodeSummary', summaryParams.value, {
       headers: {
         'Content-Type': 'application/json'
@@ -239,11 +227,10 @@ async function uploadSave() {
   }
 
   try {
-    // The backend endpoint expects a POST request with sessionToken, data (file content), and summary (encoded summary)
     const response = await axios.post('/api/upload-save', {
       sessionToken: sessionToken.value,
-      data: gameData.value, // Base64 encoded file content
-      summary: summaryBase64.value // Base64 encoded summary
+      data: gameData.value, 
+      summary: summaryBase64.value
     }, {
       headers: {
         'Content-Type': 'application/json'
@@ -270,7 +257,7 @@ async function uploadSave() {
 <style scoped>
 .container {
   max-width: 600px;
-  margin: 20px auto; /* Add some top/bottom margin */
+  margin: 20px auto;
   background: #fff;
   padding: 30px;
   border-radius: 8px;
@@ -279,64 +266,64 @@ async function uploadSave() {
 h1 {
   color: #0056b3;
   text-align: center;
-  margin-bottom: 20px; /* Slightly reduce bottom margin */
+  margin-bottom: 20px;
 }
 label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
-  color: #333; /* Darker label color */
+  color: #333;
 }
 input[type="text"],
 input[type="number"],
 textarea {
   width: calc(100% - 20px);
   padding: 10px;
-  margin-bottom: 15px; /* Reduce bottom margin */
-  border: 1px solid #ccc; /* Slightly softer border */
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
-  font-size: 15px; /* Slightly smaller font */
+  font-size: 15px;
 }
 input[readonly] {
-  background-color: #f0f0f0; /* Grey out readonly input */
+  background-color: #f0f0f0;
   cursor: default;
 }
 textarea {
-  min-height: 80px; /* Slightly smaller textarea */
+  min-height: 80px;
   resize: vertical;
-  background-color: #f9f9f9; /* Light background for readonly textarea */
+  background-color: #f9f9f9;
 }
 button {
-  background-color: #007bff; /* Primary blue for buttons */
+  background-color: #007bff;
   color: white;
   padding: 12px 20px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px; /* Slightly smaller font */
+  font-size: 16px;
   width: 100%;
   transition: background-color 0.3s ease;
-  margin-bottom: 15px; /* Adjust margin */
+  margin-bottom: 15px;
 }
 button:hover {
-  background-color: #0056b3; /* Darker blue on hover */
+  background-color: #0056b3;
 }
 button:active {
-    background-color: #004085; /* Even darker when clicked */
+    background-color: #004085;
 }
 
 .summary-input-section {
-  margin-bottom: 25px; /* Adjust margin */
-  padding: 20px; /* Adjust padding */
-  border: 1px dashed #a0a0a0; /* Softer dashed border */
-  background-color: #f8f9fa; /* Light background */
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 1px dashed #a0a0a0;
+  background-color: #f8f9fa;
   border-radius: 5px;
 }
 .summary-input-section h3,
 .summary-input-section h4 {
   margin-top: 0;
-  margin-bottom: 15px; /* Adjust margin */
+  margin-bottom: 15px;
   color: #0056b3;
 }
 .summary-input-section p {
@@ -347,22 +334,22 @@ button:active {
 }
 .summary-input-section label {
   display: inline-block;
-  width: 150px; /* Increase label width for better alignment */
-  margin-right: 10px; /* Add margin between label and input */
-  vertical-align: top; /* Align labels nicely */
-  margin-bottom: 10px; /* Add bottom margin for labels */
+  width: 150px;
+  margin-right: 10px;
+  vertical-align: top;
+  margin-bottom: 10px;
 }
 .summary-input-section input[type="text"],
 .summary-input-section input[type="number"] {
-  width: calc(100% - 170px); /* Adjust input width based on label width + margin */
-  margin-bottom: 10px; /* Keep bottom margin consistent */
-  display: inline-block; /* Ensure inputs are inline-block */
-  vertical-align: top; /* Align inputs nicely */
+  width: calc(100% - 170px);
+  margin-bottom: 10px;
+  display: inline-block;
+  vertical-align: top;
 }
-/* Specific style for the generate button within the section */
+
 .summary-input-section button {
-    margin-top: 5px; /* Add some space above the button */
-    background-color: #ffc107; /* Warning/Yellow button */
+    margin-top: 5px;
+    background-color: #ffc107;
     color: #333;
 }
 .summary-input-section button:hover {
@@ -371,7 +358,7 @@ button:active {
 
 
 input[type="file"] {
-    display: block; /* Ensure file input takes full width */
+    display: block;
     margin-bottom: 20px;
 }
 
@@ -382,7 +369,7 @@ input[type="file"] {
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
-  word-break: break-all; /* Prevent long messages from overflowing */
+  word-break: break-all;
 }
 .error {
   background-color: #f8d7da;
@@ -391,6 +378,6 @@ input[type="file"] {
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
-  word-break: break-all; /* Prevent long messages from overflowing */
+  word-break: break-all;
 }
 </style>

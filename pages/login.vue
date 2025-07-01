@@ -20,48 +20,43 @@
 
 <script>
 import QrcodeVue from 'qrcode.vue';
-import Cookies from 'js-cookie'; // 导入 js-cookie 库
+import Cookies from 'js-cookie';
 
 export default {
   components: {
-    QrcodeVue, // 注册 QrcodeVue 组件
+    QrcodeVue,
   },
   data() {
     return {
       intervalId: null,
-      qrcodeValue: '', // 这将保存 QR 码的 URL
-      resultMessage: '点击按钮开始登录流程。', // 用于显示结果的响应式消息
-      manualToken: '', // 用于手动输入 Token 的数据
+      qrcodeValue: '',
+      resultMessage: '点击按钮开始登录流程。',
+      manualToken: '',
     };
   },
   mounted() {
-    // 组件挂载时检查 Cookie 中是否有保存的 Token
     this.loadTokenFromCookie();
   },
   beforeDestroy() {
-    // 组件销毁时清除定时器
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
   },
   methods: {
     generateDeviceId() {
-      // 生产环境中可能需要更健壮的设备 ID 生成方式
       return 'web-' + Math.random().toString(36).substring(2, 15);
     },
     async startLogin() {
       const deviceId = this.generateDeviceId();
       this.resultMessage = "正在生成设备码...";
-      this.qrcodeValue = ''; // 清除之前的 QR 码
+      this.qrcodeValue = '';
 
-      // 清除可能存在的定时器，防止重复调用
       if (this.intervalId) {
         clearInterval(this.intervalId);
       }
 
       try {
-        // 1. 获取设备码
-        const response = await fetch('/api/login', { // 假设你的登录端点在 /api/login
+        const response = await fetch('/api/login', { 
           method: 'POST',
         });
         const data = await response.json();
@@ -77,33 +72,32 @@ export default {
         const deviceCode = data.device_code;
 
         this.resultMessage = "设备码已接收。等待 TapTap 授权...";
-        this.qrcodeValue = qrcodeUrl; // 设置 qrcode.vue 的值
+        this.qrcodeValue = qrcodeUrl;
 
-        // 2. 获取 Token (每 5 秒轮询你的 Nitro API 路由)
+        // 2. 获取 Token
         this.intervalId = setInterval(async () => {
           try {
             const tokenResponse = await fetch(`/api/token/${deviceCode}`, {
               method: 'POST',
               headers: {
-                'Content-Type': 'text/plain', // 为纯文本正文设置内容类型
+                'Content-Type': 'text/plain',
               },
-              body: deviceId, // deviceId 作为纯文本正文发送
+              body: deviceId,
             });
 
             // 首先检查 HTTP 错误
             if (!tokenResponse.ok) {
-              const errorData = await tokenResponse.json(); // 尝试解析错误正文
+              const errorData = await tokenResponse.json();
               console.error("Token API HTTP 错误:", tokenResponse.status, errorData);
               this.resultMessage = `登录失败: ${errorData.statusMessage || '未知错误'} (${tokenResponse.status})`;
               clearInterval(this.intervalId);
               return;
             }
 
-            const tokenData = await tokenResponse.json(); // 解析成功的响应正文
+            const tokenData = await tokenResponse.json();
             console.log("完整 Token 响应数据:", tokenData);
 
             if (tokenData.success === false) {
-              // 处理后端明确返回 success: false 的情况
               if (tokenData.data && tokenData.data.error === "authorization_pending") {
                 console.log("等待扫码中...");
                 this.resultMessage = "等待扫码中，请在 TapTap App 中扫码...";
@@ -117,11 +111,9 @@ export default {
             } else if (tokenData.success === true) {
               // 登录成功
               this.resultMessage = "登录成功！已保存 Token 到 Cookie。";
-              // 在这里保存 tokenData.data (用户信息) 到 Cookie
-              this.saveTokenToCookie(tokenData.data.sessionToken); // 假设 access_token 在 tokenData.data 中
+              this.saveTokenToCookie(tokenData.data.sessionToken);
               clearInterval(this.intervalId);
             } else {
-              // 后端响应格式异常
               this.resultMessage = "收到非预期响应: " + JSON.stringify(tokenData, null, 2);
               clearInterval(this.intervalId);
             }
@@ -138,13 +130,12 @@ export default {
       }
     },
     saveTokenToCookie(token) {
-      // 将 token 保存到名为 'taptap_access_token' 的 cookie 中，有效期设置为 28 天
-      Cookies.set('taptap_access_token', token, { expires: 28 });
+      Cookies.set('session_token', token, { expires: 28 });
       this.resultMessage += '\nToken 已保存到 Cookie。';
       console.log('Token 已保存到 Cookie:', token);
     },
     loadTokenFromCookie() {
-      const token = Cookies.get('taptap_access_token');
+      const token = Cookies.get('session_token');
       if (token) {
         this.manualToken = token; // 将 Cookie 中的 Token 加载到输入框
         this.resultMessage = `已从 Cookie 加载 Token: ${token.substring(0, 10)}...（已隐藏部分）\n您可以使用此 Token 或开始新的登录流程。`;
@@ -163,7 +154,7 @@ export default {
       }
     },
     clearCookie() {
-      Cookies.remove('taptap_access_token');
+      Cookies.remove('session_token');
       this.manualToken = '';
       this.resultMessage = '已清除保存的 Token。请点击按钮开始新的登录流程。';
       console.log('TapTap Token Cookie 已清除。');
