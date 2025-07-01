@@ -70,16 +70,39 @@ const getRatingFromScore = (score, fc) => {
   if (score > 700000) return 'C';
   return 'F';
 };
-const getSuggest = (acc, rks, difficulty) => {
+const getSuggest = (acc, rks, difficulty, pRks) => {
   // 目标rks
   const targetRks = parseFloat(rks.toFixed(2)) + 0.01 - 0.005;
   // 当前单曲rks
-  const currentRks = Math.pow((acc - 55) / 45, 2) * difficulty
+  const currentRks = Math.pow((acc - 55) / 45, 2) * difficulty;
+
   // 目标单曲rks
   const targetSongRks = targetRks * 30 - (rks * 30 - currentRks);
   const targetAcc = (Math.sqrt(targetSongRks / difficulty) * 45 + 55);
   // 判断
-  if (targetAcc > 100) return '无法推分';
+  if (targetAcc > 100) 
+  {
+    if (currentRks != difficulty)
+    {
+      //原来的p3 rks
+      let p3_rks = 0;
+      for (let i=0;i<pRks.length;i++) p3_rks += pRks[i];
+      //模拟AP
+      const simulatedRks = [...pRks, difficulty];
+      simulatedRks.sort((a, b) => a - b);
+      simulatedRks.shift();
+      //现在的p3 rks
+      let new_rks = rks * 30 - p3_rks;
+      for (let i=0;i<pRks.length;i++) new_rks += simulatedRks[i];
+      new_rks /= 30;
+      console.log(rks, new_rks);
+      if (new_rks.toFixed(4) > rks.toFixed(4))//涨了！
+      {
+        return "100.00%"
+      }
+    }
+    return '无法推分';
+  }
   else return `${targetAcc.toFixed(2)}%`;
 };
 const getMoney = (money) => {
@@ -140,6 +163,7 @@ const generateReport = async () => {
     const phiSongs = [];
     const b19Songs = [];
     let b19Counter = 0;
+    let p3Rks = [];
 
     b27Data.forEach((song, index) => {
       const transformedSong = {
@@ -151,12 +175,13 @@ const generateReport = async () => {
         Rating: getRatingFromScore(song.score, song.fc),
         score: song.score,
         acc: song.acc,
-        suggest: getSuggest(song.acc, summaryData.rks, song.difficulty),
+        suggest: getSuggest(song.acc, summaryData.rks, song.difficulty, p3Rks),
       };
 
       // 判定是 Phi 还是 B19
       if (index < 3 && transformedSong.Rating === 'phi') {
         phiSongs.push(transformedSong);
+        p3Rks.push(transformedSong.rks);
       } else {
         b19Counter++;
         transformedSong.num = b19Counter;
