@@ -4,7 +4,9 @@
     <button @click="startLogin">使用 TapTap 登录</button>
 
     <div class="qrcode-wrapper">
-      <qrcode-vue v-if="qrcodeValue" :value="qrcodeValue" :size="128" level="H"></qrcode-vue>
+      <a v-if="qrcodeValue" :href="qrcodeValue" target="_blank" rel="noopener noreferrer">
+        <qrcode-vue :value="qrcodeValue" :size="128" level="H"></qrcode-vue>
+      </a>
     </div>
 
     <div id="result">{{ resultMessage }}</div>
