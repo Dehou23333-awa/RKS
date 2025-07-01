@@ -194,13 +194,20 @@ const exportAsImage = async () => {
     alert('没有可导出的B27成绩内容！');
     return;
   }
+  
+  // 检测是否为移动设备
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   isExporting.value = true;
   try {
-    const scale = 2;
+    // 移动端使用较低的缩放比例和质量
+    const scale = isMobile ? 1 : 2;
+    const quality = isMobile ? 0.75 : 1.0;
+    
     const options = {
       width: node.scrollWidth * scale,
       height: node.scrollHeight * scale,
-      quality: 1.0, 
+      quality: quality,
       style: {
         'transform': `scale(${scale})`,
         'transform-origin': 'top left'
@@ -214,7 +221,7 @@ const exportAsImage = async () => {
     link.click();
     document.body.removeChild(link);
   } catch (error) {
-    console.error('导出高清图片时发生错误:', error);
+    console.error('导出图片时发生错误:', error);
     alert('导出失败，请查看控制台获取更多信息。');
   } finally {
     isExporting.value = false;
