@@ -82,9 +82,9 @@ const atLevelsInput = ref('');
 // 解析等级输入字符串为数字数组
 const parseLevelsInput = (input) => {
   const numbers = input.split(',')
-                       .map(s => parseInt(s.trim(), 10))
-                       .filter(n => !isNaN(n));
-  while(numbers.length < 3) numbers.push(0);
+    .map(s => parseInt(s.trim(), 10))
+    .filter(n => !isNaN(n));
+  while (numbers.length < 3) numbers.push(0);
   return numbers.slice(0, 3);
 };
 
@@ -120,9 +120,9 @@ const fetchSummary = async (token) => {
       messageClass.value = 'success';
       console.log('Summary data loaded:', data);
     } else {
-       message.value = '获取存档摘要失败: 响应数据为空。';
-       messageClass.value = 'error';
-       console.error('Failed to fetch summary: Empty response data');
+      message.value = '获取存档摘要失败: 响应数据为空。';
+      messageClass.value = 'error';
+      console.error('Failed to fetch summary: Empty response data');
     }
   } catch (error) {
     messageClass.value = 'error';
@@ -229,7 +229,7 @@ async function uploadSave() {
   try {
     const response = await axios.post('/api/upload-save', {
       sessionToken: sessionToken.value,
-      data: gameData.value, 
+      data: gameData.value,
       summary: summaryBase64.value
     }, {
       headers: {
@@ -263,17 +263,20 @@ async function uploadSave() {
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
+
 h1 {
   color: #0056b3;
   text-align: center;
   margin-bottom: 20px;
 }
+
 label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
   color: #333;
 }
+
 input[type="text"],
 input[type="number"],
 textarea {
@@ -285,15 +288,18 @@ textarea {
   box-sizing: border-box;
   font-size: 15px;
 }
+
 input[readonly] {
   background-color: #f0f0f0;
   cursor: default;
 }
+
 textarea {
   min-height: 80px;
   resize: vertical;
   background-color: #f9f9f9;
 }
+
 button {
   background-color: #007bff;
   color: white;
@@ -306,11 +312,13 @@ button {
   transition: background-color 0.3s ease;
   margin-bottom: 15px;
 }
+
 button:hover {
   background-color: #0056b3;
 }
+
 button:active {
-    background-color: #004085;
+  background-color: #004085;
 }
 
 .summary-input-section {
@@ -320,18 +328,21 @@ button:active {
   background-color: #f8f9fa;
   border-radius: 5px;
 }
+
 .summary-input-section h3,
 .summary-input-section h4 {
   margin-top: 0;
   margin-bottom: 15px;
   color: #0056b3;
 }
+
 .summary-input-section p {
-    font-size: 0.9em;
-    color: #555;
-    margin-top: -10px;
-    margin-bottom: 20px;
+  font-size: 0.9em;
+  color: #555;
+  margin-top: -10px;
+  margin-bottom: 20px;
 }
+
 .summary-input-section label {
   display: inline-block;
   width: 150px;
@@ -339,6 +350,7 @@ button:active {
   vertical-align: top;
   margin-bottom: 10px;
 }
+
 .summary-input-section input[type="text"],
 .summary-input-section input[type="number"] {
   width: calc(100% - 170px);
@@ -348,18 +360,19 @@ button:active {
 }
 
 .summary-input-section button {
-    margin-top: 5px;
-    background-color: #ffc107;
-    color: #333;
+  margin-top: 5px;
+  background-color: #ffc107;
+  color: #333;
 }
+
 .summary-input-section button:hover {
-     background-color: #e0a800;
+  background-color: #e0a800;
 }
 
 
 input[type="file"] {
-    display: block;
-    margin-bottom: 20px;
+  display: block;
+  margin-bottom: 20px;
 }
 
 .success {
@@ -371,6 +384,7 @@ input[type="file"] {
   margin-top: 15px;
   word-break: break-all;
 }
+
 .error {
   background-color: #f8d7da;
   color: #721c24;

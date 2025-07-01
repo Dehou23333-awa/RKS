@@ -8,13 +8,8 @@
       <h2>Step 1: Fetch & Parse Save File</h2>
       <div class="input-group">
         <label for="token-input">Session Token:</label>
-        <input
-          id="token-input"
-          v-model="sessionToken"
-          type="text"
-          placeholder="Enter your 25-character sessionToken"
-          :disabled="isLoading"
-        />
+        <input id="token-input" v-model="sessionToken" type="text" placeholder="Enter your 25-character sessionToken"
+          :disabled="isLoading" />
         <button @click="getAndParseSave" :disabled="!sessionToken || isLoading">
           {{ isLoadingGet ? 'Loading...' : 'Get & Parse Save' }}
         </button>
@@ -42,19 +37,19 @@
       <div class="input-group">
         <input type="file" @change="handleFileSelect" accept=".zip" :disabled="isLoading" />
         <button @click="parseUploadedFile" :disabled="!uploadedFile || isLoading">
-           {{ isLoadingParseUpload ? 'Verifying...' : 'Verify Uploaded File' }}
+          {{ isLoadingParseUpload ? 'Verifying...' : 'Verify Uploaded File' }}
         </button>
       </div>
-       <div v-if="reParsedData">
+      <div v-if="reParsedData">
         <h3>Verification Result:</h3>
         <div v-if="isVerificationSuccessful" class="message success">
-            ✅ Verification Successful! The re-parsed data is deeply equal to the data used for building.
+          ✅ Verification Successful! The re-parsed data is deeply equal to the data used for building.
         </div>
         <div v-else class="message error">
-            ❌ Verification Failed! The re-parsed data does NOT match. Check the data below for differences.
+          ❌ Verification Failed! The re-parsed data does NOT match. Check the data below for differences.
         </div>
         <textarea v-model="reParsedDataString" rows="20" readonly></textarea>
-       </div>
+      </div>
     </div>
 
     <!-- Status Messages -->
@@ -119,12 +114,12 @@ function canonicalize(obj: any): any {
 }
 
 const isVerificationSuccessful = computed(() => {
-    if (!parsedSaveData.value || !reParsedData.value) return false;
-    
-    const canonicalOriginal = JSON.stringify(canonicalize(parsedSaveData.value));
-    const canonicalRebuilt = JSON.stringify(canonicalize(reParsedData.value));
+  if (!parsedSaveData.value || !reParsedData.value) return false;
 
-    return canonicalOriginal === canonicalRebuilt;
+  const canonicalOriginal = JSON.stringify(canonicalize(parsedSaveData.value));
+  const canonicalRebuilt = JSON.stringify(canonicalize(reParsedData.value));
+
+  return canonicalOriginal === canonicalRebuilt;
 });
 
 
@@ -203,13 +198,13 @@ async function parseUploadedFile() {
 
     const response = await $fetch('/api/parse-upload', { method: 'POST', body: formData });
     if (response.success) {
-        reParsedData.value = response.data;
-        successMessage.value = "Uploaded file parsed successfully! Check the verification result."
+      reParsedData.value = response.data;
+      successMessage.value = "Uploaded file parsed successfully! Check the verification result."
     } else { throw new Error(response.error); }
   } catch (error: any) {
-     errorMessage.value = error.data?.error || error.message || 'Failed to parse the uploaded file.';
+    errorMessage.value = error.data?.error || error.message || 'Failed to parse the uploaded file.';
   } finally {
-      isLoadingParseUpload.value = false;
+    isLoadingParseUpload.value = false;
   }
 }
 </script>
@@ -249,7 +244,7 @@ h2 {
 }
 
 h3 {
-    margin-top: 1.5rem;
+  margin-top: 1.5rem;
 }
 
 .input-group {
@@ -281,8 +276,8 @@ textarea {
 }
 
 textarea[readonly] {
-    background-color: #f1f1f1;
-    cursor: not-allowed;
+  background-color: #f1f1f1;
+  cursor: not-allowed;
 }
 
 button {

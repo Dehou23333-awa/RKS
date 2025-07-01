@@ -58,7 +58,7 @@ export default {
       }
 
       try {
-        const response = await fetch('/api/login', { 
+        const response = await fetch('/api/login', {
           method: 'POST',
         });
         const data = await response.json();
@@ -192,7 +192,8 @@ body {
   width: 90%;
 }
 
-h1, h2 {
+h1,
+h2 {
   color: #333;
 }
 
@@ -205,7 +206,8 @@ button {
   cursor: pointer;
   font-size: 16px;
   margin-top: 10px;
-  transition: background-color 0.3s ease; /* 添加过渡效果 */
+  transition: background-color 0.3s ease;
+  /* 添加过渡效果 */
 }
 
 button:hover {
@@ -213,7 +215,8 @@ button:hover {
 }
 
 .manual-token-input button {
-  background-color: #28a745; /* 不同的颜色 */
+  background-color: #28a745;
+  /* 不同的颜色 */
   margin-left: 10px;
 }
 
@@ -221,7 +224,8 @@ button:hover {
   background-color: #218838;
 }
 
-.manual-token-input button:last-child { /* 清除按钮 */
+.manual-token-input button:last-child {
+  /* 清除按钮 */
   background-color: #dc3545;
 }
 
@@ -239,15 +243,18 @@ button:hover {
   word-wrap: break-word;
   text-align: left;
   background-color: #f9f9f9;
-  max-height: 200px; /* 限制高度并添加滚动条 */
+  max-height: 200px;
+  /* 限制高度并添加滚动条 */
   overflow-y: auto;
   width: 100%;
-  box-sizing: border-box; /* 包含 padding 在宽度内 */
+  box-sizing: border-box;
+  /* 包含 padding 在宽度内 */
 }
 
 .qrcode-wrapper {
   margin-top: 20px;
-  border: 1px solid #eee; /* 添加边框 */
+  border: 1px solid #eee;
+  /* 添加边框 */
   padding: 5px;
   background-color: white;
   border-radius: 4px;
@@ -261,12 +268,14 @@ button:hover {
 }
 
 .manual-token-input input[type="password"] {
-  width: calc(100% - 22px); /* 减去 padding 和 border */
+  width: calc(100% - 22px);
+  /* 减去 padding 和 border */
   padding: 10px;
   margin-top: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
-  box-sizing: border-box; /* 包含 padding 在宽度内 */
+  box-sizing: border-box;
+  /* 包含 padding 在宽度内 */
 }
 </style>
