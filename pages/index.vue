@@ -1,13 +1,15 @@
 <template>
   <div class="home-wrapper">
     <h1>Phigros B27 报告生成器</h1>
-    <p>欢迎使用！请选择上方导航进入 B27 报告页面。</p>
     <div class="btn-group">
       <router-link to="/b27">
-        <button class="go-btn">前往 B27 报告</button>
+        <button class="go-btn">查询成绩</button>
       </router-link>
       <router-link to="/login">
         <button class="go-btn login-btn">登录后立即查分</button>
+      </router-link>
+      <router-link to="/songs">
+        <button class="go-btn songs-btn">Phigros全曲目</button>
       </router-link>
     </div>
   </div>
@@ -42,6 +44,8 @@ p {
   display: flex;
   gap: 1.5rem;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .go-btn {
@@ -61,6 +65,14 @@ p {
 
 .go-btn.login-btn:hover {
   background: #1e7e34;
+}
+
+.go-btn.songs-btn {
+  background: #6f42c1;
+}
+
+.go-btn.songs-btn:hover {
+  background: #5a32a3;
 }
 
 .go-btn:hover {
