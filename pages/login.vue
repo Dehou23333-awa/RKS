@@ -2,6 +2,8 @@
   <div class="container">
     <h1>TapTap 登录</h1>
 
+    <button @click="goHome" class="btn-home">返回首页</button>
+
     <!-- 账号切换区域 -->
     <div class="account-switcher" v-if="savedAccounts.length > 0">
       <h3>已保存的账号</h3>
@@ -75,6 +77,9 @@ export default {
     }
   },
   methods: {
+    goHome() {
+      window.location.href = '/';
+    },
     generateDeviceId() {
       return 'web-' + Math.random().toString(36).substring(2, 15);
     },
@@ -667,5 +672,14 @@ button:hover {
 
 .btn-danger:hover {
   background-color: #c82333;
+}
+
+.btn-home {
+  background-color: #6c757d;
+  margin-bottom: 20px;
+}
+
+.btn-home:hover {
+  background-color: #5a6268;
 }
 </style>

@@ -3,6 +3,9 @@
     <!-- 用户输入和控制区域 -->
     <div class="controls-wrapper">
       <input class="sessionToken" v-model="sessionToken" type="text" placeholder="在此输入 Session Token" />
+      <button @click="goHome">
+        返回首页
+      </button>
       <button @click="generateReport" :disabled="isLoading">
         {{ isLoading ? '正在生成...' : '生成B27成绩' }}
       </button>
@@ -80,6 +83,10 @@ const imageLoadProgress = ref(0);
 const triggerFileInput = () => {
   fileInput.value.click();
 };
+
+const goHome = () => {
+  navigateTo('/')
+}
 
 // --- 辅助函数 ---
 const getRatingFromScore = (score, fc) => {
