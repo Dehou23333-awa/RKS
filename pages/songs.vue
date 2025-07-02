@@ -1,7 +1,12 @@
 <template>
   <div class="song-browser">
     <header class="header">
-      <h1 class="title">Phigros 全曲目</h1>
+      <div class="header-top">
+        <div class="title-section">
+          <button @click="goHome" class="home-btn">返回首页</button>
+          <h1 class="title">Phigros 全曲目</h1>
+        </div>
+      </div>
       <div class="search-container">
         <input v-model="searchTerm" type="text" placeholder="搜索歌曲名或作曲家..." class="search-input" @input="handleSearch" />
         <div class="search-icon">🔍</div>
@@ -201,6 +206,11 @@ const handleSearch = () => {
     searchDebounced.value = searchTerm.value
     currentPage.value = 1
   }, 300)
+}
+
+//返回首页
+const goHome = () => {
+  navigateTo('/')
 }
 
 // API调用
@@ -1224,6 +1234,59 @@ onUnmounted(() => {
 
   .charter {
     max-width: 70px;
+  }
+}
+
+.header-top {
+  margin-bottom: 1rem;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.home-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.home-btn:active {
+  transform: translateY(0);
+}
+
+.title {
+  margin: 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .title-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .home-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
   }
 }
 </style>
