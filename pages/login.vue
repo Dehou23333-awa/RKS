@@ -1,7 +1,33 @@
 <template>
   <div class="container">
     <h1>TapTap 登录</h1>
-    <button @click="startLogin">使用 TapTap 登录</button>
+
+    <!-- 账号切换区域 -->
+    <div class="account-switcher" v-if="savedAccounts.length > 0">
+      <h3>已保存的账号</h3>
+      <div class="account-list">
+        <div v-for="(account, index) in savedAccounts" :key="index" class="account-item"
+          :class="{ active: currentAccountId === account.id }">
+          <div class="account-info">
+            <span class="account-name">{{ account.name || `账号 ${index + 1}` }}</span>
+            <span class="account-id">
+              {{ account.playerID ? `玩家ID: ${account.playerID}` : `ID: ${account.id.substring(0, 8)}...` }}
+            </span>
+            <span class="token-status" :class="account.tokenStatus || 'unknown'">
+              {{ getTokenStatusText(account.tokenStatus) }}
+            </span>
+          </div>
+          <div class="account-actions">
+            <button @click="switchAccount(account)" class="btn-small">切换</button>
+            <button @click="validateAccount(account)" class="btn-small">验证</button>
+            <button @click="renameAccount(account)" class="btn-small">重命名</button>
+            <button @click="deleteAccount(account)" class="btn-small btn-danger">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button @click="startLogin">使用 TapTap 登录新账号</button>
 
     <div class="qrcode-wrapper">
       <a v-if="qrcodeValue" :href="qrcodeValue" target="_blank" rel="noopener noreferrer">
@@ -14,8 +40,9 @@
     <div class="manual-token-input">
       <h2>或手动输入 Token</h2>
       <input type="password" v-model="manualToken" placeholder="在此输入 Session Token" />
-      <button @click="useManualToken">使用此 Token</button>
-      <button @click="clearCookie">清除保存的 Token</button>
+      <button @click="useManualToken">保存此 Token</button>
+      <button @click="clearCurrentAccount">清除当前账号</button>
+      <button @click="clearAllAccounts" class="btn-danger">清除所有账号</button>
     </div>
   </div>
 </template>
@@ -34,9 +61,12 @@ export default {
       qrcodeValue: '',
       resultMessage: '点击按钮开始登录流程。',
       manualToken: '',
+      savedAccounts: [],
+      currentAccountId: null,
     };
   },
   mounted() {
+    this.loadAccounts();
     this.loadTokenFromCookie();
   },
   beforeDestroy() {
@@ -48,6 +78,115 @@ export default {
     generateDeviceId() {
       return 'web-' + Math.random().toString(36).substring(2, 15);
     },
+
+    generateAccountId() {
+      return 'acc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    },
+
+    async fetchPlayerID(sessionToken) {
+      try {
+        const response = await fetch(`/api/query?action=playerID&sessionToken=${encodeURIComponent(sessionToken)}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // 直接检查 playerID 字段
+        const playerID = data.playerID || (data.data && data.data.playerID);
+
+        if (playerID) {
+          return {
+            success: true,
+            playerID: playerID,
+            tokenStatus: 'valid'
+          };
+        } else {
+          return {
+            success: false,
+            error: data.error || data.message || '获取玩家ID失败',
+            tokenStatus: 'invalid'
+          };
+        }
+      } catch (error) {
+        console.error('获取玩家ID失败:', error);
+        return {
+          success: false,
+          error: error.message,
+          tokenStatus: 'error'
+        };
+      }
+    },
+
+    async validateAccount(account) {
+      this.resultMessage = `正在验证账号 "${account.name}"...`;
+
+      const result = await this.fetchPlayerID(account.token);
+
+      if (result.success) {
+        account.playerID = result.playerID;
+        account.tokenStatus = 'valid';
+        account.lastValidated = new Date().toISOString();
+        this.saveAccounts();
+        this.resultMessage = `账号 "${account.name}" 验证成功！玩家ID: ${result.playerID}`;
+      } else {
+        account.tokenStatus = 'invalid';
+        account.lastValidated = new Date().toISOString();
+        this.saveAccounts();
+        this.resultMessage = `账号 "${account.name}" 验证失败: ${result.error}`;
+      }
+    },
+
+    async validateAllAccounts() {
+      this.resultMessage = '正在验证所有账号...';
+      let validCount = 0;
+      let invalidCount = 0;
+
+      for (const account of this.savedAccounts) {
+        const result = await this.fetchPlayerID(account.token);
+
+        if (result.success) {
+          account.playerID = result.playerID;
+          account.tokenStatus = 'valid';
+          validCount++;
+        } else {
+          account.tokenStatus = 'invalid';
+          invalidCount++;
+        }
+        account.lastValidated = new Date().toISOString();
+      }
+
+      this.saveAccounts();
+      this.resultMessage = `验证完成：${validCount} 个有效账号，${invalidCount} 个无效账号。`;
+    },
+
+    async validateCurrentToken() {
+      const token = this.manualToken.trim();
+      if (!token) {
+        this.resultMessage = '请先输入Token。';
+        return;
+      }
+
+      this.resultMessage = '正在验证当前Token...';
+      const result = await this.fetchPlayerID(token);
+
+      if (result.success) {
+        this.resultMessage = `Token验证成功！玩家ID: ${result.playerID}`;
+      } else {
+        this.resultMessage = `Token验证失败: ${result.error}`;
+      }
+    },
+
+    getTokenStatusText(status) {
+      switch (status) {
+        case 'valid': return '✓ 有效';
+        case 'invalid': return '✗ 无效';
+        case 'error': return '⚠ 错误';
+        default: return '? 未验证';
+      }
+    },
+
     async startLogin() {
       const deviceId = this.generateDeviceId();
       this.resultMessage = "正在生成设备码...";
@@ -64,10 +203,9 @@ export default {
         const data = await response.json();
         console.log("设备码响应:", data);
 
-        // 检查设备码是否成功获取
         if (!data.qrcode_url || !data.device_code) {
           this.resultMessage = "获取设备码失败: " + (data.error || '未知错误');
-          return; // 停止流程
+          return;
         }
 
         const qrcodeUrl = data.qrcode_url;
@@ -76,7 +214,6 @@ export default {
         this.resultMessage = "设备码已接收。等待 TapTap 授权...";
         this.qrcodeValue = qrcodeUrl;
 
-        // 2. 获取 Token
         this.intervalId = setInterval(async () => {
           try {
             const tokenResponse = await fetch(`/api/token/${deviceCode}`, {
@@ -87,7 +224,6 @@ export default {
               body: deviceId,
             });
 
-            // 首先检查 HTTP 错误
             if (!tokenResponse.ok) {
               const errorData = await tokenResponse.json();
               console.error("Token API HTTP 错误:", tokenResponse.status, errorData);
@@ -111,9 +247,8 @@ export default {
                 clearInterval(this.intervalId);
               }
             } else if (tokenData.success === true) {
-              // 登录成功
-              this.resultMessage = "登录成功！已保存 Token 到 Cookie。";
-              this.saveTokenToCookie(tokenData.data.sessionToken);
+              this.resultMessage = "登录成功！正在获取用户信息...";
+              await this.saveNewAccount(tokenData.data.sessionToken);
               clearInterval(this.intervalId);
             } else {
               this.resultMessage = "收到非预期响应: " + JSON.stringify(tokenData, null, 2);
@@ -123,49 +258,191 @@ export default {
           } catch (error) {
             console.error("获取 Token 时出错:", error);
             this.resultMessage = "获取 Token 时出错: " + (error.message || error);
-            clearInterval(this.intervalId); // 网络/解析错误时停止轮询
+            clearInterval(this.intervalId);
           }
-        }, 5000); // 每 5 秒轮询
+        }, 5000);
       } catch (error) {
         console.error("获取设备码时出错:", error);
         this.resultMessage = "获取设备码时出错: " + (error.message || error);
       }
     },
+
+    async saveNewAccount(token) {
+      const accountId = this.generateAccountId();
+      const newAccount = {
+        id: accountId,
+        token: token,
+        name: `账号 ${this.savedAccounts.length + 1}`,
+        createdAt: new Date().toISOString(),
+        tokenStatus: 'unknown',
+        playerID: null
+      };
+
+      // 尝试获取玩家ID
+      const result = await this.fetchPlayerID(token);
+      if (result.success) {
+        newAccount.playerID = result.playerID;
+        newAccount.tokenStatus = 'valid';
+        this.resultMessage = `登录成功！玩家ID: ${result.playerID}`;
+      } else {
+        newAccount.tokenStatus = 'invalid';
+        this.resultMessage = `登录成功但获取用户信息失败: ${result.error}`;
+      }
+
+      this.savedAccounts.push(newAccount);
+      this.saveAccounts();
+      this.switchAccount(newAccount);
+      this.resultMessage += '\n新账号已保存并设为当前账号。';
+    },
+
     saveTokenToCookie(token) {
       Cookies.set('session_token', token, { expires: 28 });
-      this.resultMessage += '\nToken 已保存到 Cookie。';
       console.log('Token 已保存到 Cookie:', token);
     },
-    loadTokenFromCookie() {
+
+    async loadTokenFromCookie() {
       const token = Cookies.get('session_token');
       if (token) {
-        this.manualToken = token; // 将 Cookie 中的 Token 加载到输入框
-        this.resultMessage = `已从 Cookie 加载 Token: ${token.substring(0, 10)}...（已隐藏部分）\n您可以使用此 Token 或开始新的登录流程。`;
+        this.manualToken = token;
+
+        const existingAccount = this.savedAccounts.find(acc => acc.token === token);
+        if (existingAccount) {
+          this.currentAccountId = existingAccount.id;
+          this.resultMessage = `当前使用账号: ${existingAccount.name}`;
+          if (existingAccount.playerID) {
+            this.resultMessage += ` (玩家ID: ${existingAccount.playerID})`;
+          }
+        } else {
+          this.resultMessage = `已从 Cookie 加载 Token: ${token.substring(0, 10)}...（已隐藏部分）\n您可以使用此 Token 或开始新的登录流程。`;
+        }
         console.log('从 Cookie 加载的 Token:', token);
       } else {
         this.resultMessage = '点击按钮开始登录流程。';
       }
     },
-    useManualToken() {
+
+    async useManualToken() {
       const token = this.manualToken.trim();
       if (token) {
-        this.saveTokenToCookie(token);
-        this.resultMessage = `已使用手动输入的 Token 并保存到 Cookie: ${token.substring(0, 10)}...（已隐藏部分）`;
+        const existingAccount = this.savedAccounts.find(acc => acc.token === token);
+        if (existingAccount) {
+          this.switchAccount(existingAccount);
+          this.resultMessage = `已切换到已存在的账号: ${existingAccount.name}`;
+        } else {
+          await this.saveNewAccount(token);
+          this.resultMessage = `已使用手动输入的 Token 创建新账号并保存。`;
+        }
       } else {
         this.resultMessage = '请输入有效的 Token。';
       }
     },
-    clearCookie() {
-      Cookies.remove('session_token');
-      this.manualToken = '';
-      this.resultMessage = '已清除保存的 Token。请点击按钮开始新的登录流程。';
-      console.log('TapTap Token Cookie 已清除。');
+
+    loadAccounts() {
+      const accountsData = localStorage.getItem('taptap_accounts');
+      if (accountsData) {
+        try {
+          const data = JSON.parse(accountsData);
+          this.savedAccounts = data.accounts || [];
+          this.currentAccountId = data.currentAccountId || null;
+        } catch (e) {
+          console.error('加载账号数据失败:', e);
+          this.savedAccounts = [];
+        }
+      }
+    },
+
+    saveAccounts() {
+      const data = {
+        accounts: this.savedAccounts,
+        currentAccountId: this.currentAccountId
+      };
+      localStorage.setItem('taptap_accounts', JSON.stringify(data));
+    },
+
+    async switchAccount(account) {
+      this.currentAccountId = account.id;
+      this.saveTokenToCookie(account.token);
+      this.manualToken = account.token;
+      this.saveAccounts();
+
+      let message = `已切换到账号: ${account.name}`;
+      if (account.playerID) {
+        message += ` (玩家ID: ${account.playerID})`;
+      }
+
+      // 如果token状态未知或者很久没验证，自动验证一次
+      const lastValidated = account.lastValidated ? new Date(account.lastValidated) : null;
+      const hoursSinceValidation = lastValidated ? (Date.now() - lastValidated.getTime()) / (1000 * 60 * 60) : Infinity;
+
+      if (!account.tokenStatus || account.tokenStatus === 'unknown' || hoursSinceValidation > 24) {
+        message += '\n正在验证Token状态...';
+        this.resultMessage = message;
+        await this.validateAccount(account);
+      } else {
+        this.resultMessage = message;
+      }
+    },
+
+    renameAccount(account) {
+      const newName = prompt('请输入新的账号名称:', account.name);
+      if (newName && newName.trim()) {
+        account.name = newName.trim();
+        this.saveAccounts();
+        this.resultMessage = `账号已重命名为: ${account.name}`;
+      }
+    },
+
+    deleteAccount(account) {
+      if (confirm(`确定要删除账号 "${account.name}" 吗？`)) {
+        const index = this.savedAccounts.findIndex(acc => acc.id === account.id);
+        if (index > -1) {
+          this.savedAccounts.splice(index, 1);
+
+          if (this.currentAccountId === account.id) {
+            Cookies.remove('session_token');
+            this.currentAccountId = null;
+            this.manualToken = '';
+
+            if (this.savedAccounts.length > 0) {
+              this.switchAccount(this.savedAccounts[0]);
+            }
+          }
+
+          this.saveAccounts();
+          this.resultMessage = `账号 "${account.name}" 已删除。`;
+        }
+      }
+    },
+
+    clearCurrentAccount() {
+      if (this.currentAccountId) {
+        const account = this.savedAccounts.find(acc => acc.id === this.currentAccountId);
+        if (account) {
+          this.deleteAccount(account);
+        }
+      } else {
+        Cookies.remove('session_token');
+        this.manualToken = '';
+        this.resultMessage = '已清除当前 Token。';
+      }
+    },
+
+    clearAllAccounts() {
+      if (confirm('确定要清除所有保存的账号吗？此操作不可恢复。')) {
+        this.savedAccounts = [];
+        this.currentAccountId = null;
+        localStorage.removeItem('taptap_accounts');
+        Cookies.remove('session_token');
+        this.manualToken = '';
+        this.resultMessage = '已清除所有保存的账号。';
+      }
     }
   },
 };
 </script>
 
 <style scoped>
+/* 保留原有样式并添加新样式 */
 body {
   font-family: sans-serif;
   display: flex;
@@ -188,12 +465,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  max-width: 500px;
+  max-width: 700px;
   width: 90%;
 }
 
 h1,
-h2 {
+h2,
+h3 {
   color: #333;
 }
 
@@ -207,7 +485,6 @@ button {
   font-size: 16px;
   margin-top: 10px;
   transition: background-color 0.3s ease;
-  /* 添加过渡效果 */
 }
 
 button:hover {
@@ -216,7 +493,6 @@ button:hover {
 
 .manual-token-input button {
   background-color: #28a745;
-  /* 不同的颜色 */
   margin-left: 10px;
 }
 
@@ -225,14 +501,12 @@ button:hover {
 }
 
 .manual-token-input button:last-child {
-  /* 清除按钮 */
   background-color: #dc3545;
 }
 
 .manual-token-input button:last-child:hover {
   background-color: #c82333;
 }
-
 
 #result {
   margin-top: 20px;
@@ -244,17 +518,14 @@ button:hover {
   text-align: left;
   background-color: #f9f9f9;
   max-height: 200px;
-  /* 限制高度并添加滚动条 */
   overflow-y: auto;
   width: 100%;
   box-sizing: border-box;
-  /* 包含 padding 在宽度内 */
 }
 
 .qrcode-wrapper {
   margin-top: 20px;
   border: 1px solid #eee;
-  /* 添加边框 */
   padding: 5px;
   background-color: white;
   border-radius: 4px;
@@ -269,13 +540,132 @@ button:hover {
 
 .manual-token-input input[type="password"] {
   width: calc(100% - 22px);
-  /* 减去 padding 和 border */
   padding: 10px;
   margin-top: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
-  /* 包含 padding 在宽度内 */
+}
+
+/* 多账号管理样式 */
+.account-switcher {
+  width: 100%;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.account-switcher h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #495057;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.account-item:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.account-item.active {
+  border-color: #007bff;
+  background-color: #e7f3ff;
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  flex: 1;
+}
+
+.account-name {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.account-id {
+  font-size: 11px;
+  color: #6c757d;
+  margin-bottom: 2px;
+}
+
+.player-id {
+  font-size: 12px;
+  color: #28a745;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.token-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.token-status.valid {
+  color: #155724;
+  background-color: #d4edda;
+}
+
+.token-status.invalid {
+  color: #721c24;
+  background-color: #f8d7da;
+}
+
+.token-status.error {
+  color: #856404;
+  background-color: #fff3cd;
+}
+
+.token-status.unknown {
+  color: #6c757d;
+  background-color: #e9ecef;
+}
+
+.account-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.bulk-actions {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 12px;
+  margin-top: 0;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
 }
 </style>
