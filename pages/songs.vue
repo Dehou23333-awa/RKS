@@ -1,15 +1,9 @@
 <template>
   <div class="song-browser">
     <header class="header">
-      <h1 class="title">音乐曲库</h1>
+      <h1 class="title">Phigros 全曲目</h1>
       <div class="search-container">
-        <input
-          v-model="searchTerm"
-          type="text"
-          placeholder="搜索歌曲名或作曲家..."
-          class="search-input"
-          @input="handleSearch"
-        />
+        <input v-model="searchTerm" type="text" placeholder="搜索歌曲名或作曲家..." class="search-input" @input="handleSearch" />
         <div class="search-icon">🔍</div>
       </div>
     </header>
@@ -34,21 +28,10 @@
         </div>
 
         <div v-else class="songs-grid">
-          <div
-            v-for="song in data?.songs"
-            :key="song.id"
-            class="song-card"
-            @click="selectSong(song)"
-            :class="{ active: selectedSong?.id === song.id }"
-          >
+          <div v-for="song in data?.songs" :key="song.id" class="song-card">
             <div class="song-illustration">
-              <img
-                :src="getIllustrationUrl(song.id)"
-                :alt="`${song.name} 曲绘`"
-                class="illustration-img"
-                @error="handleImageError"
-                loading="lazy"
-              />
+              <img :src="getIllustrationUrl(song.id)" :alt="`${song.name} 曲绘`" class="illustration-img"
+                @error="handleImageError" loading="lazy" />
               <div class="play-overlay" @click.stop="toggleMusic(song)">
                 <div class="play-btn" :class="{ playing: currentPlayingSong?.id === song.id && !musicPaused }">
                   {{ currentPlayingSong?.id === song.id && !musicPaused ? '⏸️' : '▶️' }}
@@ -65,12 +48,8 @@
             </div>
 
             <div class="charts-container">
-              <div
-                v-for="(chart, difficulty) in song.charts"
-                :key="difficulty"
-                class="chart-item"
-                :class="{ 'has-chart': chart }"
-              >
+              <div v-for="(chart, difficulty) in song.charts" :key="difficulty" class="chart-item"
+                :class="{ 'has-chart': chart }">
                 <div class="difficulty-label" :class="`difficulty-${difficulty.toLowerCase()}`">
                   {{ difficulty }}
                 </div>
@@ -81,36 +60,40 @@
                 <div v-else class="no-chart">-</div>
               </div>
             </div>
+
+            <!-- 下载选择区域 -->
+            <div class="download-section">
+              <select v-model="selectedCharts[song.id]" class="chart-select" :disabled="downloadingSongs[song.id]">
+                <option value="">选择难度下载</option>
+                <template v-for="(chart, difficulty) in song.charts" :key="`${song.id}-${difficulty}`">
+                  <option v-if="chart" :value="difficulty">
+                    {{ difficulty }} Lv.{{ chart.difficulty }} - {{ chart.charter }}
+                  </option>
+                </template>
+              </select>
+              <button @click="downloadSong(song)" :disabled="!selectedCharts[song.id] || downloadingSongs[song.id]"
+                class="download-btn">
+                {{ downloadingSongs[song.id] ? '下载中...' : '下载' }}
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- 分页 -->
         <div v-if="data?.pagination" class="pagination">
-          <button
-            @click="goToPage(data.pagination.page - 1)"
-            :disabled="data.pagination.page <= 1"
-            class="page-btn"
-          >
+          <button @click="goToPage(data.pagination.page - 1)" :disabled="data.pagination.page <= 1" class="page-btn">
             ‹ 上一页
           </button>
 
           <div class="page-numbers">
-            <button
-              v-for="pageNum in getPageNumbers()"
-              :key="pageNum"
-              @click="goToPage(pageNum)"
-              :class="{ active: pageNum === data.pagination.page }"
-              class="page-number"
-            >
+            <button v-for="pageNum in getPageNumbers()" :key="pageNum" @click="goToPage(pageNum)"
+              :class="{ active: pageNum === data.pagination.page }" class="page-number">
               {{ pageNum }}
             </button>
           </div>
 
-          <button
-            @click="goToPage(data.pagination.page + 1)"
-            :disabled="data.pagination.page >= data.pagination.totalPages"
-            class="page-btn"
-          >
+          <button @click="goToPage(data.pagination.page + 1)"
+            :disabled="data.pagination.page >= data.pagination.totalPages" class="page-btn">
             下一页 ›
           </button>
 
@@ -122,64 +105,12 @@
       </div>
     </main>
 
-    <!-- 歌曲详情侧边栏 -->
-    <aside v-if="selectedSong" class="sidebar">
-      <div class="sidebar-header">
-        <h3>歌曲详情</h3>
-        <button @click="selectedSong = null" class="close-btn">×</button>
-      </div>
-      <div class="song-details">
-        <div class="detail-illustration">
-          <img
-            :src="getIllustrationUrl(selectedSong.id)"
-            :alt="`${selectedSong.name} 曲绘`"
-            class="detail-illustration-img"
-            @error="handleImageError"
-          />
-          <div class="detail-play-overlay" @click="toggleMusic(selectedSong)">
-            <div class="detail-play-btn" :class="{ playing: currentPlayingSong?.id === selectedSong.id && !musicPaused }">
-              {{ currentPlayingSong?.id === selectedSong.id && !musicPaused ? '⏸️' : '▶️' }}
-            </div>
-          </div>
-        </div>
-
-        <h4 :title="selectedSong.name">{{ selectedSong.name }}</h4>
-        <p><strong>作曲:</strong> <span :title="selectedSong.composer">{{ selectedSong.composer }}</span></p>
-        <p><strong>插画:</strong> <span :title="selectedSong.illustrator">{{ selectedSong.illustrator }}</span></p>
-        <p><strong>ID:</strong> {{ selectedSong.id }}</p>
-
-        <div class="charts-detail">
-          <h5>谱面信息</h5>
-          <div
-            v-for="(chart, difficulty) in selectedSong.charts"
-            :key="difficulty"
-            class="chart-detail-item"
-          >
-            <div class="difficulty-badge" :class="`difficulty-${difficulty.toLowerCase()}`">
-              {{ difficulty }}
-            </div>
-            <div v-if="chart" class="chart-detail-info">
-              <span>难度: {{ chart.difficulty }}</span>
-              <span class="charter-detail" :title="chart.charter || '未知'">
-                谱师: {{ chart.charter || '未知' }}
-              </span>
-            </div>
-            <div v-else class="no-chart-detail">无谱面</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-
     <!-- 音乐播放器 -->
     <div v-if="currentPlayingSong" class="music-player">
       <div class="player-content">
         <div class="player-info">
-          <img
-            :src="getIllustrationUrl(currentPlayingSong.id)"
-            :alt="`${currentPlayingSong.name} 曲绘`"
-            class="player-illustration"
-            @error="handleImageError"
-          />
+          <img :src="getIllustrationUrl(currentPlayingSong.id)" :alt="`${currentPlayingSong.name} 曲绘`"
+            class="player-illustration" @error="handleImageError" />
           <div class="player-text">
             <div class="player-title">{{ currentPlayingSong.name }}</div>
             <div class="player-composer">{{ currentPlayingSong.composer }}</div>
@@ -196,14 +127,7 @@
         <div class="player-progress">
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: musicProgress + '%' }"></div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              v-model="musicProgress"
-              @input="seekMusic"
-              class="progress-slider"
-            />
+            <input type="range" min="0" max="100" v-model="musicProgress" @input="seekMusic" class="progress-slider" />
           </div>
           <div class="time-display">
             {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
@@ -212,35 +136,42 @@
 
         <div class="volume-control">
           <span class="volume-icon">🔊</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            v-model="volume"
-            @input="setVolume"
-            class="volume-slider"
-          />
+          <input type="range" min="0" max="100" v-model="volume" @input="setVolume" class="volume-slider" />
         </div>
       </div>
     </div>
 
     <!-- 音频元素 -->
-    <audio
-      ref="audioPlayer"
-      @loadedmetadata="onAudioLoaded"
-      @timeupdate="onTimeUpdate"
-      @ended="onAudioEnded"
-      @error="onAudioError"
-      preload="none"
-    ></audio>
+    <audio ref="audioPlayer" @loadedmetadata="onAudioLoaded" @timeupdate="onTimeUpdate" @ended="onAudioEnded"
+      @error="onAudioError" preload="none"></audio>
+
+    <!-- 下载进度提示 -->
+    <div v-if="Object.keys(downloadProgress).length > 0" class="download-toast">
+      <div v-for="(progress, songId) in downloadProgress" :key="songId" class="download-item">
+        <span>{{ progress.name }}</span>
+        <span>{{ progress.percent }}%</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
+
 const searchTerm = ref('')
-const selectedSong = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(20)
+
+// 下载相关状态
+const selectedCharts = ref({})
+const downloadingSongs = ref({})
+const downloadProgress = ref({})
+
+// 运行时配置
+const config = useRuntimeConfig()
+const githubApiToken = config.public.githubToken
+const userAgentString = 'PhiPezGenerator'
 
 // 音乐播放相关
 const audioPlayer = ref(null)
@@ -292,15 +223,64 @@ const getMusicUrl = (songId) => {
   return `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/music/${songId}.ogg`
 }
 
+// 获取高清曲绘URL
+const getIllustrationHDUrl = async (songId) => {
+  const apiUrl = 'https://api.github.com/repos/7aGiven/Phigros_Resource/git/trees/illustration?recursive=1'
+
+  try {
+    const headers = { 'User-Agent': userAgentString }
+    if (githubApiToken) {
+      headers.Authorization = `Bearer ${githubApiToken}`
+    }
+
+    const response = await fetch(apiUrl, { headers })
+    if (!response.ok) {
+      console.error('Failed to fetch illustration tree:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (data.tree) {
+      const foundItem = data.tree.find(item =>
+        item.type === 'blob' &&
+        item.path.startsWith(songId) &&
+        item.path.toLowerCase().endsWith('.png')
+      )
+      return foundItem ? `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/illustration/${foundItem.path}` : null
+    }
+  } catch (error) {
+    console.error('Error fetching illustration:', error)
+  }
+  return null
+}
+
+// 获取谱面文件URL
+const getChartUrl = async (songId, difficulty) => {
+  // 直接构建URL，不通过API查询
+  const chartUrl = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/chart/${songId}.0/${difficulty}.json`
+
+  try {
+    // 检查文件是否存在
+    const response = await fetch(chartUrl, { method: 'HEAD' })
+    if (response.ok) {
+      return chartUrl
+    }
+  } catch (error) {
+    console.error('Chart file not found:', error)
+  }
+
+  return null
+}
+
 // 处理图片加载错误
 const handleImageError = (event) => {
-  event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZmFmYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNhMGFlYzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7mm6rmi77ml7blm7w8L3RleHQ+PC9zdmc+'
+  event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZmFmYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNhMGFlYzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7mm7LntrvliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
 }
 
 // 音乐播放控制
 const toggleMusic = async (song) => {
   if (currentPlayingSong.value?.id === song.id) {
-    // 当前歌曲，切换播放/暂停
     if (musicPaused.value) {
       await audioPlayer.value.play()
       musicPaused.value = false
@@ -309,21 +289,19 @@ const toggleMusic = async (song) => {
       musicPaused.value = true
     }
   } else {
-    // 新歌曲，停止当前并播放新的
     if (currentPlayingSong.value) {
       audioPlayer.value.pause()
     }
-    
+
     currentPlayingSong.value = song
     audioPlayer.value.src = getMusicUrl(song.id)
-    
+
     try {
       await audioPlayer.value.load()
       await audioPlayer.value.play()
       musicPaused.value = false
     } catch (error) {
       console.error('音乐播放失败:', error)
-      // 播放失败时的处理
       alert('音乐文件加载失败，可能该歌曲暂未提供音频文件')
       currentPlayingSong.value = null
       musicPaused.value = true
@@ -384,6 +362,104 @@ const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// 下载功能
+const fetchAndAddFileToZip = async (zipInstance, url, fileNameInZip, friendlyName, isOptional = false) => {
+  if (!url) {
+    if (!isOptional) {
+      throw new Error(`${friendlyName} URL is not available.`)
+    } else {
+      console.log(`Optional file ${friendlyName} URL not found, skipping.`)
+      return
+    }
+  }
+
+  console.log(`Fetching ${friendlyName}: ${url}`)
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`Status: ${response.status} ${response.statusText}`)
+    }
+    const blob = await response.blob()
+    zipInstance.file(fileNameInZip, blob)
+    console.log(`Added ${fileNameInZip} to zip.`)
+  } catch (error) {
+    if (!isOptional) {
+      throw new Error(`Failed to fetch ${friendlyName}: ${error.message}`)
+    } else {
+      console.warn(`Warning: Could not fetch optional file ${friendlyName} (${url}): ${error.message}. Continuing without it.`)
+    }
+  }
+}
+
+const downloadSong = async (song) => {
+  const selectedDifficulty = selectedCharts.value[song.id]
+  if (!selectedDifficulty || downloadingSongs.value[song.id]) return
+
+  downloadingSongs.value[song.id] = true
+  downloadProgress.value[song.id] = { name: song.name, percent: 0 }
+
+  const zip = new JSZip()
+
+  try {
+    const selectedChart = song.charts[selectedDifficulty]
+    if (!selectedChart) throw new Error('Selected chart not found')
+
+    // 生成info.txt
+    const infoTxtContent = `#
+Name: ${song.name}
+Song: ${song.id}.ogg
+Picture: ${song.id}.png
+Chart: ${selectedDifficulty}.json
+Level: ${selectedDifficulty} Lv.${selectedChart.difficulty}
+Composer: ${song.composer}
+Illustrator: ${song.illustrator}
+Charter: ${selectedChart.charter}`
+
+    zip.file("info.txt", infoTxtContent)
+    downloadProgress.value[song.id].percent = 20
+
+    // 下载音乐文件
+    await fetchAndAddFileToZip(zip, getMusicUrl(song.id), `${song.id}.ogg`, 'music file')
+    downloadProgress.value[song.id].percent = 40
+
+    // 下载曲绘文件（尝试高清版本）
+    let illustrationUrl = await getIllustrationHDUrl(song.id)
+    await fetchAndAddFileToZip(zip, illustrationUrl, `${song.id}.png`, 'illustration file', true)
+    downloadProgress.value[song.id].percent = 60
+
+    // 下载谱面文件
+    const chartUrl = await getChartUrl(song.id, selectedDifficulty)
+    await fetchAndAddFileToZip(zip, chartUrl, `${selectedDifficulty}.json`, 'chart file')
+    downloadProgress.value[song.id].percent = 80
+
+    // 生成PEZ文件
+    const zipFileName = `${song.id}.${selectedDifficulty}.pez`
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    }, (metadata) => {
+      downloadProgress.value[song.id].percent = 80 + Math.floor(metadata.percent / 5)
+    })
+
+    saveAs(zipBlob, zipFileName)
+    downloadProgress.value[song.id].percent = 100
+
+    // 清理状态
+    setTimeout(() => {
+      delete downloadProgress.value[song.id]
+    }, 3000)
+
+  } catch (error) {
+    console.error('Download error:', error)
+    alert(`下载失败: ${error.message}`)
+    delete downloadProgress.value[song.id]
+  } finally {
+    downloadingSongs.value[song.id] = false
+    selectedCharts.value[song.id] = '' // 重置选择
+  }
+}
+
 // 分页相关
 const goToPage = (page) => {
   if (page >= 1 && page <= data.value?.pagination?.totalPages) {
@@ -393,27 +469,23 @@ const goToPage = (page) => {
 
 const getPageNumbers = () => {
   if (!data.value?.pagination) return []
-  
+
   const { page, totalPages } = data.value.pagination
   const pages = []
   const maxVisible = 5
-  
+
   let start = Math.max(1, page - Math.floor(maxVisible / 2))
   let end = Math.min(totalPages, start + maxVisible - 1)
-  
+
   if (end - start + 1 < maxVisible) {
     start = Math.max(1, end - maxVisible + 1)
   }
-  
+
   for (let i = start; i <= end; i++) {
     pages.push(i)
   }
-  
-  return pages
-}
 
-const selectSong = (song) => {
-  selectedSong.value = selectedSong.value?.id === song.id ? null : song
+  return pages
 }
 
 // 初始化音量
@@ -442,7 +514,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   position: relative;
-  padding-bottom: 80px; /* 为播放器留出空间 */
+  padding-bottom: 80px;
 }
 
 .header {
@@ -520,7 +592,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
@@ -565,18 +639,12 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .song-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.song-card.active {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
 .song-illustration {
@@ -663,7 +731,8 @@ onUnmounted(() => {
   gap: 0.3rem;
 }
 
-.composer, .illustrator {
+.composer,
+.illustrator {
   font-size: 0.9rem;
   color: #666;
   overflow: hidden;
@@ -676,6 +745,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .chart-item {
@@ -703,10 +773,21 @@ onUnmounted(() => {
   min-width: 30px;
 }
 
-.difficulty-ez { background: #48bb78; }
-.difficulty-hd { background: #ed8936; }
-.difficulty-in { background: #e53e3e; }
-.difficulty-at { background: #805ad5; }
+.difficulty-ez {
+  background: #48bb78;
+}
+
+.difficulty-hd {
+  background: #ed8936;
+}
+
+.difficulty-in {
+  background: #e53e3e;
+}
+
+.difficulty-at {
+  background: #805ad5;
+}
 
 .chart-info {
   display: flex;
@@ -742,6 +823,98 @@ onUnmounted(() => {
   margin-top: 1rem;
 }
 
+/* 下载选择区域 */
+.download-section {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.chart-select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.chart-select:focus {
+  border-color: #667eea;
+}
+
+.chart-select:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+}
+
+.download-btn {
+  padding: 0.5rem 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.download-btn:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.download-btn:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 下载进度提示 */
+.download-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-width: 300px;
+}
+
+.download-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.download-item:last-child {
+  border-bottom: none;
+}
+
+.download-item span:first-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 1rem;
+}
+
+.download-item span:last-child {
+  font-weight: 600;
+  color: #667eea;
+}
+
 .pagination {
   display: flex;
   flex-wrap: wrap;
@@ -751,7 +924,8 @@ onUnmounted(() => {
   padding: 2rem 0;
 }
 
-.page-btn, .page-number {
+.page-btn,
+.page-number {
   padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -762,7 +936,8 @@ onUnmounted(() => {
   color: #4a5568;
 }
 
-.page-btn:hover:not(:disabled), .page-number:hover {
+.page-btn:hover:not(:disabled),
+.page-number:hover {
   background: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -790,199 +965,6 @@ onUnmounted(() => {
   text-align: center;
   width: 100%;
   margin-top: 1rem;
-}
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 100vh;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(15px);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
-  overflow-y: auto;
-  z-index: 200;
-  transform: translateX(0);
-  transition: transform 0.3s ease;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  color: #2d3748;
-  font-size: 1.4rem;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  color: #a0aec0;
-  line-height: 1;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: #f7fafc;
-  color: #4a5568;
-}
-
-.detail-illustration {
-  position: relative;
-  width: 100%;
-  height: 250px;
-  margin-bottom: 1.5rem;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f7fafc;
-}
-
-.detail-illustration-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.detail-play-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.detail-illustration:hover .detail-play-overlay {
-  opacity: 1;
-}
-
-.detail-play-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.detail-play-btn:hover {
-  background: white;
-  transform: scale(1.1);
-}
-
-.detail-play-btn.playing {
-  background: #667eea;
-  color: white;
-}
-
-.song-details h4 {
-  font-size: 1.5rem;
-  margin: 0 0 1rem 0;
-  color: #2d3748;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: help;
-}
-
-.song-details p {
-  margin: 0.5rem 0;
-  color: #4a5568;
-  overflow: hidden;
-}
-
-.song-details p span {
-  display: inline-block;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: bottom;
-  cursor: help;
-}
-
-.charts-detail {
-  margin-top: 2rem;
-}
-
-.charts-detail h5 {
-  margin: 0 0 1rem 0;
-  color: #2d3748;
-  font-size: 1.2rem;
-}
-
-.chart-detail-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  margin-bottom: 0.5rem;
-  background: #f7fafc;
-  border-radius: 8px;
-}
-
-.difficulty-badge {
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  color: white;
-  font-weight: 600;
-  font-size: 0.9rem;
-  min-width: 40px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.chart-detail-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.chart-detail-info span {
-  font-size: 0.9rem;
-  color: #4a5568;
-}
-
-.charter-detail {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: help;
-}
-
-.no-chart-detail {
-  color: #a0aec0;
-  font-style: italic;
 }
 
 /* 音乐播放器样式 */
@@ -1161,35 +1143,30 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .song-browser {
     flex-direction: column;
-    padding-bottom: 120px; /* 移动端播放器更高 */
+    padding-bottom: 120px;
   }
-  
+
   .songs-grid {
     grid-template-columns: 1fr;
   }
-  
-  .sidebar {
-    width: 100vw;
-    right: 0;
-  }
-  
+
   .main-content {
     padding: 1rem;
   }
-  
+
   .header {
     padding: 1rem;
   }
-  
+
   .title {
     font-size: 1.8rem;
   }
-  
+
   .pagination {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .page-numbers {
     order: -1;
   }
@@ -1197,10 +1174,6 @@ onUnmounted(() => {
   .charter {
     max-width: 60px;
     font-size: 0.6rem;
-  }
-  
-  .song-details p span {
-    max-width: 200px;
   }
 
   .player-content {
@@ -1221,6 +1194,22 @@ onUnmounted(() => {
     width: 100%;
     justify-content: center;
   }
+
+  .download-section {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .chart-select,
+  .download-btn {
+    width: 100%;
+  }
+
+  .download-toast {
+    left: 20px;
+    right: 20px;
+    max-width: none;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1228,11 +1217,11 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.8rem;
   }
-  
+
   .chart-item {
     min-height: 90px;
   }
-  
+
   .charter {
     max-width: 70px;
   }
