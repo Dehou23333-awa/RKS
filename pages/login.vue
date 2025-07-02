@@ -85,7 +85,10 @@ export default {
     },
 
     generateAccountId() {
-      return 'acc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+      const array = new Uint32Array(2);
+      window.crypto.getRandomValues(array);
+      const randomString = Array.from(array, num => num.toString(36)).join('').substring(0, 12);
+      return 'acc-' + Date.now() + '-' + randomString;
     },
 
     async fetchPlayerID(sessionToken) {
