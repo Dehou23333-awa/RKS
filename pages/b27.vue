@@ -2,9 +2,12 @@
   <div class="page-wrapper">
     <!-- 用户输入和控制区域 -->
     <div class="controls-wrapper">
-      <input v-model="sessionToken" type="text" placeholder="在此输入 Session Token" />
+      <input class="sessionToken" v-model="sessionToken" type="text" placeholder="在此输入 Session Token" />
       <button @click="generateReport" :disabled="isLoading">
         {{ isLoading ? '正在生成...' : '生成B27成绩' }}
+      </button>
+      <button @click="queryAllRecords" :disabled="isQuerying">
+        {{ isQuerying ? '正在查询...' : '查询全部记录' }}
       </button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? '正在导出...' : '导出为图片' }}
@@ -22,6 +25,9 @@
     <div v-if="isLoading" class="status-placeholder">
       正在从服务器获取玩家数据，请稍候...
     </div>
+    <div v-if="isQuerying" class="status-placeholder">
+      正在查询全部记录，请稍候...
+    </div>
     <div v-if="error" class="status-placeholder error">
       发生错误: {{ error }}
     </div>
@@ -33,8 +39,8 @@
         :spInfo="reportData.spInfo" :stats="reportData.stats" :phi="reportData.phi" :b19_list="reportData.b19_list"
         :_plugin="reportData._plugin" :Version="reportData.Version" />
       <!-- 初始状态的占位符 -->
-      <div v-else-if="!isLoading && !error" class="status-placeholder">
-        请输入 Session Token 并点击“生成B27成绩”。
+      <div v-else-if="!isLoading && !error && !isQuerying" class="status-placeholder">
+        请输入 Session Token 并点击"生成B27成绩"或"查询全部记录"。
       </div>
     </div>
   </div>
@@ -52,6 +58,7 @@ const sessionToken = ref('');
 const reportData = ref(null);
 const isLoading = ref(false);
 const isExporting = ref(false);
+const isQuerying = ref(false);
 const error = ref(null);
 const fileInput = ref(null);
 
@@ -70,6 +77,24 @@ const getRatingFromScore = (score, fc) => {
   if (score > 700000) return 'C';
   return 'F';
 };
+
+const getRandomBackground = async () => {
+  try {
+    const response = await fetch('/api/songs');
+    const data = await response.json();
+    const songs = data.songs;
+    
+    // Randomly select a song
+    const randomSong = songs[Math.floor(Math.random() * songs.length)];
+    
+    // Return the blur illustration URL
+    return `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${randomSong.id}.png`;
+  } catch (error) {
+    console.error('Failed to get random background:', error);
+    return null;
+  }
+};
+
 const getSuggest = (acc, rks, difficulty, pRks) => {
   // 目标rks
   const targetRks = parseFloat(rks.toFixed(2)) + 0.01 - 0.005;
@@ -95,7 +120,6 @@ const getSuggest = (acc, rks, difficulty, pRks) => {
       let new_rks = rks * 30 - p3_rks;
       for (let i=0;i<pRks.length;i++) new_rks += simulatedRks[i];
       new_rks /= 30;
-      console.log(rks, new_rks);
       if (new_rks.toFixed(4) > rks.toFixed(4))//涨了！
       {
         return "100.00%"
@@ -105,6 +129,7 @@ const getSuggest = (acc, rks, difficulty, pRks) => {
   }
   else return `${targetAcc.toFixed(2)}%`;
 };
+
 const getMoney = (money) => {
   let data = "";
   if (money.money["4"]) data += `${money.money["4"]} PB`;
@@ -114,6 +139,7 @@ const getMoney = (money) => {
   if (money.money["0"]) data += ` ${money.money["0"]} KB`;
   return data;
 };
+
 const fetchData = async (action, token) => {
   const response = await fetch(`/api/query?action=${action}&sessionToken=${token}`);
   if (!response.ok) {
@@ -121,6 +147,112 @@ const fetchData = async (action, token) => {
     throw new Error(`API action '${action}' failed: ${errData.body || response.statusText}`);
   }
   return response.json();
+};
+
+// 性能优化：缓存计算结果
+const ratingCache = new Map();
+const getCachedRating = (score, fc) => {
+  const key = `${score}_${fc}`;
+  if (!ratingCache.has(key)) {
+    ratingCache.set(key, getRatingFromScore(score, fc));
+  }
+  return ratingCache.get(key);
+};
+
+// 新增：查询全部记录并转换为B27格式
+const queryAllRecords = async () => {
+  if (!sessionToken.value) {
+    alert('请输入 Session Token！');
+    return;
+  }
+
+  isQuerying.value = true;
+  error.value = null;
+  reportData.value = null;
+
+  try {
+    // 并行获取基础数据和全部记录
+    const [playerData, summaryData, allRecords, money] = await Promise.all([
+      fetchData('playerID', sessionToken.value),
+      fetchData('summary', sessionToken.value),
+      fetchData('record', sessionToken.value),
+      fetchData('getUserMoney', sessionToken.value)
+    ]);
+
+    const challengeValue = summaryData.challenge.toString();
+
+    // --- 基础数据转换 ---
+    const gameuser = {
+      background: await getRandomBackground(),
+      PlayerId: playerData.playerID,
+      avatar: summaryData.avatar,
+      rks: summaryData.rks,
+      ChallengeMode: challengeValue.slice(0, 1),
+      ChallengeModeRank: challengeValue.slice(1, 3),
+      data: getMoney(money),
+    };
+
+    const formattedDate = new Date(summaryData.updatedAt).toLocaleString('sv-SE');
+    const stats = [
+      { title: 'EZ', cleared: summaryData.EZ[0], fc: summaryData.EZ[1], phi: summaryData.EZ[2] },
+      { title: 'HD', cleared: summaryData.HD[0], fc: summaryData.HD[1], phi: summaryData.HD[2] },
+      { title: 'IN', cleared: summaryData.IN[0], fc: summaryData.IN[1], phi: summaryData.IN[2] },
+      { title: 'AT', cleared: summaryData.AT[0], fc: summaryData.AT[1], phi: summaryData.AT[2] },
+    ];
+
+    // --- 性能优化：批量处理记录数据 ---
+    // 预排序，避免重复排序
+    const sortedRecords = allRecords.sort((a, b) => b.rks - a.rks);
+    
+    // 批量转换记录数据
+    const transformedRecords = sortedRecords.map((song, index) => ({
+      song: song.songName,
+      illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
+      rank: song.level,
+      difficulty: song.difficulty,
+      rks: song.rks,
+      Rating: getCachedRating(song.score, song.fc), // 使用缓存
+      score: song.score,
+      acc: song.acc,
+      num: index + 1, // 全部记录都编号
+      // suggest: 'Not Calculated',
+    }));
+
+    // 分离 Phi 和其他记录
+    const phiSongs = [];
+    const otherSongs = [];
+    
+    transformedRecords.forEach(song => {
+      if (phiSongs.length < 3 && song.Rating === 'phi') {
+        phiSongs.push(song);
+      } else {
+        otherSongs.push(song);
+      }
+    });
+
+    // 确保 phi 列表有3个元素
+    while (phiSongs.length < 3) {
+      phiSongs.push(null);
+    }
+
+    // 组装最终数据 - 使用全部记录而不是只有B19
+    reportData.value = {
+      gameuser,
+      Date: formattedDate,
+      spInfo: `全部记录 (共 ${allRecords.length} 首)`,
+      stats,
+      phi: phiSongs,
+      b19_list: otherSongs, // 这里包含全部其他记录
+      _plugin: 'Generated by RKS',
+      Version: { ver: '0.0.0' },
+    };
+
+  } catch (err) {
+    console.error('查询全部记录失败:', err);
+    error.value = err.message;
+  } finally {
+    isQuerying.value = false;
+  }
 };
 
 const generateReport = async () => {
@@ -145,6 +277,7 @@ const generateReport = async () => {
 
     // --- 数据转换 ---
     const gameuser = {
+      background: await getRandomBackground(),
       PlayerId: playerData.playerID,
       avatar: summaryData.avatar,
       rks: summaryData.rks,
@@ -172,7 +305,7 @@ const generateReport = async () => {
         rank: song.level,
         difficulty: song.difficulty,
         rks: song.rks,
-        Rating: getRatingFromScore(song.score, song.fc),
+        Rating: getCachedRating(song.score, song.fc), // 使用缓存
         score: song.score,
         acc: song.acc,
         suggest: getSuggest(song.acc, summaryData.rks, song.difficulty, p3Rks),
@@ -202,9 +335,10 @@ const generateReport = async () => {
       stats,
       phi: phiSongs,
       b19_list: b19Songs,
-      _plugin: 'Generated by Phigros-Bot-Nuxt',
-      Version: { ver: '3.0.0-API' },
+      _plugin: 'Generated by RKS',
+      Version: { ver: '0.0.0' },
     };
+    console.log(reportData.value.gameuser.background);
 
   } catch (err) {
     console.error('生成B27成绩失败:', err);
@@ -213,6 +347,7 @@ const generateReport = async () => {
     isLoading.value = false;
   }
 };
+
 const exportAsImage = async () => {
   const node = reportContainerRef.value;
   if (!node || !reportData.value) {
@@ -252,6 +387,7 @@ const exportAsImage = async () => {
     isExporting.value = false;
   }
 };
+
 const exportRecord = () => {
   if (!reportData.value) {
     alert('没有可导出的记录！');
@@ -285,6 +421,7 @@ const exportRecord = () => {
     alert('导出记录失败，请查看控制台获取更多信息。');
   }
 };
+
 const handleFileImport = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -367,6 +504,7 @@ body {
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
 }
 
 .controls-wrapper input {
@@ -396,6 +534,10 @@ body {
 .controls-wrapper button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+}
+
+.sessionToken {
+  display: none;
 }
 
 .status-placeholder {

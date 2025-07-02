@@ -2,7 +2,7 @@
   <div>
     <div class="background">
         <img
-            src="https://gh-proxy.com/https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/996.%E6%9D%8E%E5%8C%96%E7%A6%B9.png"
+            :src="gameuser.background"
             alt="曲绘-模糊"
             id="bkg"
         />
@@ -111,7 +111,7 @@
                                 <div class="acc">
                                     <p>{{ song.acc.toFixed(2) }}%</p>
                                 </div>
-                                <div class="suggest">
+                                <div class="suggest" v-if="song.suggest">
                                     <p>>> {{ song.suggest }}</p>
                                 </div>
                             </div>
@@ -181,7 +181,7 @@
                                 <div class="acc">
                                     <p>{{ song.acc.toFixed(2) }}%</p>
                                 </div>
-                                <div class="suggest">
+                                <div class="suggest" v-if="song.suggest">
                                     <p>>> {{ song.suggest }}</p>
                                 </div>
                             </div>
@@ -242,41 +242,33 @@ const props = defineProps({
 import '~/assets/b27/b27.css';
 
 function adjustFontSize() {
-    console.log("正在调整字体大小...");
     const elements = document.getElementsByName("pvis");
     for (let i = 0; i < elements.length; ++i) {
         const pElement = elements[i];
         const parentElement = pElement.parentElement;
 
-        // 增加一个安全检查，如果父元素不存在或不可见，则跳过
         if (!parentElement || parentElement.offsetWidth === 0) {
             continue;
         }
 
-        let maxFontSize = 30;
+        let maxFontSize = 25; // 降低最大字体大小
+        let minFontSize = 1;  // 设置最小字体大小
         let fontSize = maxFontSize;
-        pElement.style.fontSize = fontSize + "px";
-
-        while (
-            (pElement.scrollWidth > parentElement.offsetWidth ||
-            pElement.scrollHeight > parentElement.offsetHeight) &&
-            fontSize > 0
-        ) {
-            fontSize = Math.floor(fontSize / 2);
+        
+        // 二分查找合适的字体大小
+        while (maxFontSize - minFontSize > 1) {
+            fontSize = Math.floor((maxFontSize + minFontSize) / 2);
             pElement.style.fontSize = fontSize + "px";
-        }
-
-        while (
-            pElement.scrollWidth <= parentElement.offsetWidth &&
-            pElement.scrollHeight <= parentElement.offsetHeight &&
-            fontSize < maxFontSize
-        ) {
-            fontSize += 1;
-            pElement.style.fontSize = fontSize + "px";
+            
+            if (pElement.scrollWidth > parentElement.offsetWidth ||
+                pElement.scrollHeight > parentElement.offsetHeight) {
+                maxFontSize = fontSize;
+            } else {
+                minFontSize = fontSize;
+            }
         }
         
-        // 回退到合适的字体大小
-        pElement.style.fontSize = fontSize - 1 + "px";
+        pElement.style.fontSize = minFontSize + "px";
     }
 }
 
