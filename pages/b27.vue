@@ -13,7 +13,7 @@
         {{ isQuerying ? '正在查询...' : '查询全部记录' }}
       </button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
-        {{ isExporting ? '正在导出...' : '导出为图片' }}
+        {{ isExporting ? (isMobileDevice ? '导出中(请耐心等待)...' : '正在导出...') : '导出为图片' }}
       </button>
       <button @click="exportRecord" :disabled="!reportData">
         导出记录
@@ -45,7 +45,7 @@
     </div>
 
     <!-- B27成绩容器，现在由 reportData 和图片加载状态驱动 -->
-    <div ref="reportContainerRef" class="report-container">
+    <div ref="reportContainerRef" class="report-container" :class="{ 'exporting': isExporting }">
       <!-- 只有在 reportData 存在且所有图片加载完成时才渲染 B19Report -->
       <B19Report v-if="reportData && !isLoadingImages" :gameuser="reportData.gameuser" :formattedDate="reportData.Date"
         :spInfo="reportData.spInfo" :stats="reportData.stats" :phi="reportData.phi" :b19_list="reportData.b19_list"
@@ -73,6 +73,7 @@ const isExporting = ref(false);
 const isQuerying = ref(false);
 const error = ref(null);
 const fileInput = ref(null);
+const isMobileDevice = ref(false);
 
 // 图片加载相关状态
 const isLoadingImages = ref(false);
@@ -477,14 +478,36 @@ const exportAsImage = async () => {
     return;
   }
 
-  // 检测是否为移动设备
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // 更精确的移动设备检测
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   window.innerWidth <= 768 || 
+                   'ontouchstart' in window;
 
   isExporting.value = true;
+  
+  // 添加用户提示
+  if (isMobile) {
+    // 在移动端显示特殊提示
+    const shouldContinue = confirm('移动设备导出可能需要较长时间，建议关闭其他应用释放内存。是否继续？');
+    if (!shouldContinue) {
+      isExporting.value = false;
+      return;
+    }
+  }
+
   try {
-    // 移动端使用较低的缩放比例和质量
-    const scale = isMobile ? 1 : 2;
-    const quality = isMobile ? 0.75 : 1.0;
+    // 移动端和低内存设备使用更激进的优化
+    let scale, quality, format;
+    
+    if (isMobile) {
+      scale = 0.85;
+      quality = 0.85;
+      format = 'jpeg';
+    } else {
+      scale = 1.5;
+      quality = 0.9;
+      format = 'png';
+    }
 
     const options = {
       width: node.scrollWidth * scale,
@@ -493,18 +516,53 @@ const exportAsImage = async () => {
       style: {
         'transform': `scale(${scale})`,
         'transform-origin': 'top left'
+      },
+      cacheBust: false,
+      filter: (node) => {
+        if (node.tagName === 'SCRIPT') return false;
+        if (node.tagName === 'STYLE') return false;
+        if (node.classList && node.classList.contains('no-export')) return false;
+        return true;
       }
     };
-    const dataUrl = await domtoimage.toPng(node, options);
+
+    // 添加超时机制
+    const exportPromise = format === 'jpeg' 
+      ? domtoimage.toJpeg(node, options)
+      : domtoimage.toPng(node, options);
+    
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('导出超时')), isMobile ? 30000 : 60000);
+    });
+
+    // 使用Promise.race来实现超时
+    const dataUrl = await Promise.race([exportPromise, timeoutPromise]);
+    
+    // 创建下载链接
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `Phigros-B27-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.png`;
+    const extension = format === 'jpeg' ? 'jpg' : 'png';
+    link.download = `Phigros-B27-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.${extension}`;
+    
+    // 添加到DOM并触发下载
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   } catch (error) {
     console.error('导出图片时发生错误:', error);
-    alert('导出失败，请查看控制台获取更多信息。');
+    
+    // 更详细的错误处理
+    let errorMessage = '导出失败';
+    if (error.message.includes('超时')) {
+      errorMessage = '导出超时，请尝试关闭其他应用释放内存后重试';
+    } else if (error.message.includes('memory') || error.message.includes('内存')) {
+      errorMessage = '内存不足，请关闭其他应用后重试';
+    } else if (isMobile) {
+      errorMessage = '移动设备导出失败，建议在桌面设备上尝试';
+    }
+
+    
+    alert(errorMessage);
   } finally {
     isExporting.value = false;
   }
@@ -584,6 +642,11 @@ const handleFileImport = async (event) => {
 };
 
 onMounted(() => {
+  // 检测移动设备
+  isMobileDevice.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                        window.innerWidth <= 768 || 
+                        'ontouchstart' in window;
+
   // 优先从 URL 查询参数读取
   const params = new URLSearchParams(window.location.search);
   const token = params.get('sessionToken');
@@ -621,6 +684,7 @@ body {
   align-items: center;
   padding: 2rem;
   gap: 1.5rem;
+  min-width: 1200px;
 }
 
 .controls-wrapper {
@@ -752,25 +816,57 @@ body {
   color: #666;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
+.export-hidden {
+  display: none !important;
+}
 
-  .progress-container,
-  .report-container,
-  .status-placeholder {
-    width: 100%;
-    max-width: 100vw;
+.exporting * {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 1rem;
+    overflow-x: auto;
   }
 
   .controls-wrapper {
     flex-direction: column;
     align-items: center;
+    width: min(100vw - 2rem, 1200px);
   }
 
   .controls-wrapper input,
   .controls-wrapper button {
     width: 100%;
     max-width: 300px;
+  }
+}
+
+@media (max-width: 1240px) {
+  body {
+    overflow-x: auto;
+  }
+  
+  .page-wrapper::before {
+    content: "💡 在移动设备上，您可以左右滑动查看完整内容";
+    display: block;
+    text-align: center;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (min-width: 1240px) {
+  .page-wrapper::before {
+    display: none;
   }
 }
 </style>
