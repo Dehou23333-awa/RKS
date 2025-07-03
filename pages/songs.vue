@@ -61,25 +61,15 @@
                 <div v-if="chart" class="chart-info">
                   <span class="difficulty-number">{{ chart.difficulty || '-' }}</span>
                   <span class="charter" :title="chart.charter || '未知'">{{ chart.charter || '未知' }}</span>
+                  <!-- 直接在难度卡片中添加下载按钮 -->
+                  <button @click="downloadSong(song, difficulty)" 
+                    :disabled="downloadingSongs[`${song.id}-${difficulty}`]"
+                    class="difficulty-download-btn">
+                    {{ downloadingSongs[`${song.id}-${difficulty}`] ? '⏳' : '⬇️' }}
+                  </button>
                 </div>
                 <div v-else class="no-chart">-</div>
               </div>
-            </div>
-
-            <!-- 下载选择区域 -->
-            <div class="download-section">
-              <select v-model="selectedCharts[song.id]" class="chart-select" :disabled="downloadingSongs[song.id]">
-                <option value="">选择难度下载</option>
-                <template v-for="(chart, difficulty) in song.charts" :key="`${song.id}-${difficulty}`">
-                  <option v-if="chart" :value="difficulty">
-                    {{ difficulty }} Lv.{{ chart.difficulty }} - {{ chart.charter }}
-                  </option>
-                </template>
-              </select>
-              <button @click="downloadSong(song)" :disabled="!selectedCharts[song.id] || downloadingSongs[song.id]"
-                class="download-btn">
-                {{ downloadingSongs[song.id] ? '下载中...' : '下载' }}
-              </button>
             </div>
           </div>
         </div>
@@ -152,7 +142,7 @@
 
     <!-- 下载进度提示 -->
     <div v-if="Object.keys(downloadProgress).length > 0" class="download-toast">
-      <div v-for="(progress, songId) in downloadProgress" :key="songId" class="download-item">
+      <div v-for="(progress, songKey) in downloadProgress" :key="songKey" class="download-item">
         <span>{{ progress.name }}</span>
         <span>{{ progress.percent }}%</span>
       </div>
@@ -169,7 +159,6 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 
 // 下载相关状态
-const selectedCharts = ref({})
 const downloadingSongs = ref({})
 const downloadProgress = ref({})
 
@@ -372,7 +361,7 @@ const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-// 下载功能
+// 下载功能 - 修改为接收difficulty参数
 const fetchAndAddFileToZip = async (zipInstance, url, fileNameInZip, friendlyName, isOptional = false) => {
   if (!url) {
     if (!isOptional) {
@@ -401,17 +390,17 @@ const fetchAndAddFileToZip = async (zipInstance, url, fileNameInZip, friendlyNam
   }
 }
 
-const downloadSong = async (song) => {
-  const selectedDifficulty = selectedCharts.value[song.id]
-  if (!selectedDifficulty || downloadingSongs.value[song.id]) return
+const downloadSong = async (song, difficulty) => {
+  const downloadKey = `${song.id}-${difficulty}`
+  if (downloadingSongs.value[downloadKey]) return
 
-  downloadingSongs.value[song.id] = true
-  downloadProgress.value[song.id] = { name: song.name, percent: 0 }
+  downloadingSongs.value[downloadKey] = true
+  downloadProgress.value[downloadKey] = { name: `${song.name} (${difficulty})`, percent: 0 }
 
   const zip = new JSZip()
 
   try {
-    const selectedChart = song.charts[selectedDifficulty]
+    const selectedChart = song.charts[difficulty]
     if (!selectedChart) throw new Error('Selected chart not found')
 
     // 生成info.txt
@@ -419,54 +408,53 @@ const downloadSong = async (song) => {
 Name: ${song.name}
 Song: ${song.id}.ogg
 Picture: ${song.id}.png
-Chart: ${selectedDifficulty}.json
-Level: ${selectedDifficulty} Lv.${selectedChart.difficulty}
+Chart: ${difficulty}.json
+Level: ${difficulty} Lv.${selectedChart.difficulty}
 Composer: ${song.composer}
 Illustrator: ${song.illustrator}
 Charter: ${selectedChart.charter}`
 
     zip.file("info.txt", infoTxtContent)
-    downloadProgress.value[song.id].percent = 20
+    downloadProgress.value[downloadKey].percent = 20
 
     // 下载音乐文件
     await fetchAndAddFileToZip(zip, getMusicUrl(song.id), `${song.id}.ogg`, 'music file')
-    downloadProgress.value[song.id].percent = 40
+    downloadProgress.value[downloadKey].percent = 40
 
     // 下载曲绘文件（尝试高清版本）
     let illustrationUrl = await getIllustrationHDUrl(song.id)
     await fetchAndAddFileToZip(zip, illustrationUrl, `${song.id}.png`, 'illustration file', true)
-    downloadProgress.value[song.id].percent = 60
+    downloadProgress.value[downloadKey].percent = 60
 
     // 下载谱面文件
-    const chartUrl = await getChartUrl(song.id, selectedDifficulty)
-    await fetchAndAddFileToZip(zip, chartUrl, `${selectedDifficulty}.json`, 'chart file')
-    downloadProgress.value[song.id].percent = 80
+    const chartUrl = await getChartUrl(song.id, difficulty)
+    await fetchAndAddFileToZip(zip, chartUrl, `${difficulty}.json`, 'chart file')
+    downloadProgress.value[downloadKey].percent = 80
 
     // 生成PEZ文件
-    const zipFileName = `${song.id}.${selectedDifficulty}.pez`
+    const zipFileName = `${song.id}.${difficulty}.pez`
     const zipBlob = await zip.generateAsync({
       type: 'blob',
       compression: 'DEFLATE',
       compressionOptions: { level: 9 }
     }, (metadata) => {
-      downloadProgress.value[song.id].percent = 80 + Math.floor(metadata.percent / 5)
+      downloadProgress.value[downloadKey].percent = 80 + Math.floor(metadata.percent / 5)
     })
 
     saveAs(zipBlob, zipFileName)
-    downloadProgress.value[song.id].percent = 100
+    downloadProgress.value[downloadKey].percent = 100
 
     // 清理状态
     setTimeout(() => {
-      delete downloadProgress.value[song.id]
+      delete downloadProgress.value[downloadKey]
     }, 3000)
 
   } catch (error) {
     console.error('Download error:', error)
     alert(`下载失败: ${error.message}`)
-    delete downloadProgress.value[song.id]
+    delete downloadProgress.value[downloadKey]
   } finally {
-    downloadingSongs.value[song.id] = false
-    selectedCharts.value[song.id] = '' // 重置选择
+    downloadingSongs.value[downloadKey] = false
   }
 }
 
@@ -765,7 +753,8 @@ onUnmounted(() => {
   padding: 0.8rem 0.4rem;
   border-radius: 8px;
   background: #f7fafc;
-  min-height: 80px;
+  min-height: 120px; /* 增加高度以容纳按钮 */
+  position: relative;
 }
 
 .chart-item.has-chart {
@@ -805,6 +794,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.2rem;
   width: 100%;
+  flex: 1;
 }
 
 .difficulty-number {
@@ -825,66 +815,45 @@ onUnmounted(() => {
   cursor: help;
   line-height: 1.2;
   min-height: 1em;
+  margin-bottom: 0.5rem;
+}
+
+/* 新增下载按钮样式 */
+.difficulty-download-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  width: 30px;
+  height: 30px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.difficulty-download-btn:hover:not(:disabled) {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.difficulty-download-btn:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .no-chart {
   color: #a0aec0;
   font-size: 1.2rem;
   margin-top: 1rem;
-}
-
-/* 下载选择区域 */
-.download-section {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.chart-select {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.3s ease;
-}
-
-.chart-select:focus {
-  border-color: #667eea;
-}
-
-.chart-select:disabled {
-  background: #f7fafc;
-  cursor: not-allowed;
-}
-
-.download-btn {
-  padding: 0.5rem 1rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.download-btn:hover:not(:disabled) {
-  background: #5a67d8;
-  transform: translateY(-1px);
-}
-
-.download-btn:disabled {
-  background: #cbd5e0;
-  cursor: not-allowed;
-  opacity: 0.7;
 }
 
 /* 下载进度提示 */
@@ -1150,6 +1119,45 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
+.header-top {
+  margin-bottom: 1rem;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.home-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.home-btn:active {
+  transform: translateY(0);
+}
+
+.title {
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .song-browser {
     flex-direction: column;
@@ -1205,20 +1213,21 @@ onUnmounted(() => {
     justify-content: center;
   }
 
-  .download-section {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .chart-select,
-  .download-btn {
-    width: 100%;
-  }
-
   .download-toast {
     left: 20px;
     right: 20px;
     max-width: none;
+  }
+
+  .title-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .home-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
   }
 }
 
@@ -1229,64 +1238,17 @@ onUnmounted(() => {
   }
 
   .chart-item {
-    min-height: 90px;
+    min-height: 130px;
   }
 
   .charter {
     max-width: 70px;
   }
-}
 
-.header-top {
-  margin-bottom: 1rem;
-}
-
-.title-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.home-btn {
-  padding: 0.5rem 1rem;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
-}
-
-.home-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.home-btn:active {
-  transform: translateY(0);
-}
-
-.title {
-  margin: 0;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .title-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-  
-  .home-btn {
+  .difficulty-download-btn {
+    width: 28px;
+    height: 28px;
     font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
   }
 }
 </style>
