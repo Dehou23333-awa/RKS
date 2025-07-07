@@ -53,20 +53,19 @@
             </div>
 
             <div class="charts-container">
-              <div v-for="(chart, difficulty) in song.charts" :key="difficulty" class="chart-item"
-                :class="{ 'has-chart': chart }">
+              <div v-for="(chart, difficulty) in song.charts" :key="difficulty" class="chart-item" :class="{
+                'has-chart': chart,
+                'downloading': downloadingSongs[`${song.id}-${difficulty}`]
+              }" @click="chart && downloadSong(song, difficulty)">
                 <div class="difficulty-label" :class="`difficulty-${difficulty.toLowerCase()}`">
                   {{ difficulty }}
                 </div>
                 <div v-if="chart" class="chart-info">
                   <span class="difficulty-number">{{ chart.difficulty || '-' }}</span>
                   <span class="charter" :title="chart.charter || '未知'">{{ chart.charter || '未知' }}</span>
-                  <!-- 直接在难度卡片中添加下载按钮 -->
-                  <button @click="downloadSong(song, difficulty)" 
-                    :disabled="downloadingSongs[`${song.id}-${difficulty}`]"
-                    class="difficulty-download-btn">
-                    {{ downloadingSongs[`${song.id}-${difficulty}`] ? '⏳' : '⬇️' }}
-                  </button>
+                  <div v-if="downloadingSongs[`${song.id}-${difficulty}`]" class="download-indicator">
+                    ⏳
+                  </div>
                 </div>
                 <div v-else class="no-chart">-</div>
               </div>
@@ -743,7 +742,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
 }
 
 .chart-item {
@@ -753,12 +752,54 @@ onUnmounted(() => {
   padding: 0.8rem 0.4rem;
   border-radius: 8px;
   background: #f7fafc;
-  min-height: 120px; /* 增加高度以容纳按钮 */
+  min-height: 100px;
   position: relative;
+  transition: all 0.3s ease;
+  cursor: default;
 }
 
 .chart-item.has-chart {
   background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+  cursor: pointer;
+}
+
+.chart-item.has-chart:hover {
+  background: linear-gradient(135deg, #d2d8e0, #bbc5d0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-item.has-chart:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chart-item.downloading {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  pointer-events: none;
+}
+
+.chart-item.downloading .difficulty-label,
+.chart-item.downloading .difficulty-number,
+.chart-item.downloading .charter {
+  color: white !important;
+}
+
+.chart-item.has-chart::after {
+  content: '点击下载';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #667eea;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+}
+
+.chart-item.has-chart:hover::after {
+  opacity: 1;
 }
 
 .difficulty-label {
@@ -815,39 +856,23 @@ onUnmounted(() => {
   cursor: help;
   line-height: 1.2;
   min-height: 1em;
-  margin-bottom: 0.5rem;
 }
 
-/* 新增下载按钮样式 */
-.difficulty-download-btn {
+.download-indicator {
   position: absolute;
-  bottom: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  border-radius: 15px;
-  width: 30px;
-  height: 30px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  top: 5px;
+  right: 5px;
+  font-size: 1rem;
+  animation: pulse 1s ease-in-out infinite;
 }
 
-.difficulty-download-btn:hover:not(:disabled) {
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.difficulty-download-btn:disabled {
-  background: #cbd5e0;
-  cursor: not-allowed;
-  opacity: 0.7;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .no-chart {
@@ -856,7 +881,6 @@ onUnmounted(() => {
   margin-top: 1rem;
 }
 
-/* 下载进度提示 */
 .download-toast {
   position: fixed;
   top: 20px;
@@ -946,7 +970,6 @@ onUnmounted(() => {
   margin-top: 1rem;
 }
 
-/* 音乐播放器样式 */
 .music-player {
   position: fixed;
   bottom: 0;
@@ -1238,17 +1261,11 @@ onUnmounted(() => {
   }
 
   .chart-item {
-    min-height: 130px;
+    min-height: 90px;
   }
 
   .charter {
     max-width: 70px;
-  }
-
-  .difficulty-download-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 0.8rem;
   }
 }
 </style>
