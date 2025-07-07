@@ -102,7 +102,7 @@ const fetchSummary = async (token) => {
   message.value = '正在尝试获取当前存档摘要...';
   messageClass.value = '';
   try {
-    const response = await axios.get(`/api/query?action=summary&sessionToken=${token}`);
+    const response = await axios.get(`/api/query?action=summary`);
     if (response.data) {
       const data = response.data;
       summaryParams.value.saveVersion = data.saveVersion;
@@ -180,7 +180,7 @@ async function encodeSummaryData() {
   messageClass.value = '';
 
   try {
-    const response = await axios.post('/api/query?action=encodeSummary', summaryParams.value, {
+    const response = await axios.post('/api/encodeSummary', summaryParams.value, {
       headers: {
         'Content-Type': 'application/json'
       }

@@ -30,28 +30,6 @@
       </div>
     </div>
 
-    <!-- Step 3: Verify Rebuilt File -->
-    <div v-if="downloadCompleted" class="card">
-      <h2>Step 3: Verify Rebuilt File</h2>
-      <p>Upload the <code>gameFile.zip</code> you just downloaded to verify it.</p>
-      <div class="input-group">
-        <input type="file" @change="handleFileSelect" accept=".zip" :disabled="isLoading" />
-        <button @click="parseUploadedFile" :disabled="!uploadedFile || isLoading">
-          {{ isLoadingParseUpload ? 'Verifying...' : 'Verify Uploaded File' }}
-        </button>
-      </div>
-      <div v-if="reParsedData">
-        <h3>Verification Result:</h3>
-        <div v-if="isVerificationSuccessful" class="message success">
-          ✅ Verification Successful! The re-parsed data is deeply equal to the data used for building.
-        </div>
-        <div v-else class="message error">
-          ❌ Verification Failed! The re-parsed data does NOT match. Check the data below for differences.
-        </div>
-        <textarea v-model="reParsedDataString" rows="20" readonly></textarea>
-      </div>
-    </div>
-
     <!-- Status Messages -->
     <div v-if="errorMessage" class="message error">
       <strong>Error:</strong> {{ errorMessage }}
@@ -64,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const sessionToken = ref('');
 const parsedSaveData = ref<Record<string, any> | null>(null);
@@ -97,6 +75,16 @@ const saveDataString = computed({
 
 const reParsedDataString = computed(() => reParsedData.value ? JSON.stringify(reParsedData.value, null, 2) : '');
 
+// Read session_token cookie and auto-start if present
+onMounted(() => {
+  const sessionCookie = useCookie('session_token');
+  if (sessionCookie.value) {
+    sessionToken.value = sessionCookie.value;
+    // Automatically start the Get Save process
+    getAndParseSave();
+  }
+});
+
 function canonicalize(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
     return obj; // Return primitives as-is
@@ -112,15 +100,6 @@ function canonicalize(obj: any): any {
   });
   return sortedObj;
 }
-
-const isVerificationSuccessful = computed(() => {
-  if (!parsedSaveData.value || !reParsedData.value) return false;
-
-  const canonicalOriginal = JSON.stringify(canonicalize(parsedSaveData.value));
-  const canonicalRebuilt = JSON.stringify(canonicalize(reParsedData.value));
-
-  return canonicalOriginal === canonicalRebuilt;
-});
 
 
 function clearAllState() {
@@ -164,7 +143,7 @@ async function buildAndDownloadSave() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'gameFile.zip';
+    a.download = 'save.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -175,36 +154,6 @@ async function buildAndDownloadSave() {
     errorMessage.value = error.data?.error || error.message || 'Failed to build the save file.';
   } finally {
     isLoadingBuild.value = false;
-  }
-}
-
-function handleFileSelect(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files.length > 0) {
-    uploadedFile.value = target.files[0];
-  } else {
-    uploadedFile.value = null;
-  }
-}
-
-async function parseUploadedFile() {
-  if (!uploadedFile.value) return;
-  clearMessages();
-  reParsedData.value = null;
-  isLoadingParseUpload.value = true;
-  try {
-    const formData = new FormData();
-    formData.append('savefile', uploadedFile.value);
-
-    const response = await $fetch('/api/parse-upload', { method: 'POST', body: formData });
-    if (response.success) {
-      reParsedData.value = response.data;
-      successMessage.value = "Uploaded file parsed successfully! Check the verification result."
-    } else { throw new Error(response.error); }
-  } catch (error: any) {
-    errorMessage.value = error.data?.error || error.message || 'Failed to parse the uploaded file.';
-  } finally {
-    isLoadingParseUpload.value = false;
   }
 }
 </script>

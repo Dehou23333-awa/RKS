@@ -160,7 +160,7 @@ const getMoney = (money) => {
 };
 
 const fetchData = async (action, token) => {
-  const response = await fetch(`/api/query?action=${action}&sessionToken=${token}`);
+  const response = await fetch(`/api/query?action=${action}`);
   if (!response.ok) {
     const errData = await response.json();
     throw new Error(`API action '${action}' failed: ${errData.body || response.statusText}`);
