@@ -291,15 +291,15 @@ body p {
     color: white;
 }
 
-.b19 {
+.b27 {
     display: flex;
     z-index: 5;
     flex-wrap: wrap;
 }
 
-.b19 .L,
-.b19 .M,
-.b19 .R {
+.b27 .L,
+.b27 .M,
+.b27 .R {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -308,15 +308,15 @@ body p {
     width: 400px;
 }
 
-.b19 .L {
+.b27 .L {
     margin-left: 2%;
 }
 
-.b19 .M {
+.b27 .M {
     margin-top: 5%;
 }
 
-.b19 .R {
+.b27 .R {
     margin-top: 8%;
 }
 
@@ -549,7 +549,7 @@ body p {
 
 .suggest p {
     font-size: xx-small;
-    color: rgb(192, 221, 173);
+    color: rgb(272, 221, 173);
 }
 
 .chengji .line {
@@ -782,4 +782,54 @@ body p {
 .ver p {
     font-size: large;
     text-shadow: 0 0 20px #fff700;
+}
+
+.varianceInfo {
+    position: absolute;
+    height: 50%;
+    width: 10%;
+    right: 1%;
+    top: 25%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    --rpoz: 20px;
+    clip-path: polygon(
+        100% 0%,
+        calc(100% - var(--rpoz)) 100%,
+        0% 100%,
+        var(--rpoz) 0%
+    );
+    padding: 0 1rem;
+}
+
+.varianceTitle {
+    height: 40%;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid white;
+    width: 90%;
+    justify-content: center;
+}
+
+.varianceTitle p {
+    font-size: 0.8rem;
+    color: #00b0f0;
+    font-weight: bold;
+}
+
+.varianceValue {
+    height: 60%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.varianceValue p {
+    font-size: 1.2rem;
+    color: white;
+    text-shadow: 0 0 10px #00b0f0;
 }

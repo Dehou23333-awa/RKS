@@ -6,11 +6,11 @@
       <button @click="goHome">
         返回首页
       </button>
-      <button @click="generateReport" :disabled="isLoading">
-        {{ isLoading ? '正在生成...' : '生成B27成绩' }}
+      <button @click="queryAllRecords" :disabled="isQuerying">
+        {{ isQuerying ? '正在查询...' : '查询全部记录' }}
       </button>
-      <button @click="goToAllRecords">
-        查看全部记录
+      <button @click="goToB27">
+        生成B27成绩
       </button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? (isMobileDevice ? '导出中(请耐心等待)...' : '正在导出...') : '导出为图片' }}
@@ -18,15 +18,11 @@
       <button @click="exportRecord" :disabled="!reportData">
         导出记录
       </button>
-      <input type="file" ref="fileInput" @change="handleFileImport" accept=".txt" style="display: none" />
-      <button @click="triggerFileInput">
-        导入记录
-      </button>
     </div>
 
     <!-- 加载和错误状态显示 -->
-    <div v-if="isLoading" class="status-placeholder">
-      正在从服务器获取玩家数据，请稍候...
+    <div v-if="isQuerying" class="status-placeholder">
+      正在查询全部记录，请稍候...
     </div>
     <div v-if="error" class="status-placeholder error">
       发生错误: {{ error }}
@@ -41,7 +37,7 @@
       <div class="progress-info">{{ loadedImages }}/{{ totalImages }} 已加载</div>
     </div>
 
-    <!-- B27成绩容器 -->
+    <!-- 全部记录容器 -->
     <div ref="reportContainerRef" class="report-container" :class="{ 'exporting': isExporting }">
       <B27Report v-if="reportData && !isLoadingImages" 
         :gameuser="reportData.gameuser" 
@@ -53,8 +49,8 @@
         :variance="reportData.variance" 
         :_plugin="reportData._plugin" 
         :Version="reportData.Version" />
-      <div v-else-if="!isLoading && !error && !reportData" class="status-placeholder">
-        请输入 Session Token 并点击"生成B27成绩"。
+      <div v-else-if="!isQuerying && !error && !reportData" class="status-placeholder">
+        请输入 Session Token 并点击"查询全部记录"。
       </div>
     </div>
   </div>
@@ -69,8 +65,6 @@ import Cookies from 'js-cookie';
 // 导入共享的工具函数
 import { 
   getRandomBackground, 
-  getSuggest, 
-  calculateVariance,
   getMoney,
   fetchData,
   getCachedRating,
@@ -82,7 +76,7 @@ import {
 const reportContainerRef = ref(null);
 const sessionToken = ref('');
 const reportData = ref(null);
-const isLoading = ref(false);
+const isQuerying = ref(false);
 const isExporting = ref(false);
 const error = ref(null);
 const fileInput = ref(null);
@@ -102,31 +96,30 @@ const goHome = () => {
   navigateTo('/')
 }
 
-const goToAllRecords = () => {
-  navigateTo(`/AllRecords`)
+const goToB27 = () => {
+  navigateTo(`/b27?sessionToken=${sessionToken.value}`)
 }
 
-const generateReport = async () => {
+const queryAllRecords = async () => {
   if (!sessionToken.value) {
     alert('请输入 Session Token！');
     return;
   }
 
-  isLoading.value = true;
+  isQuerying.value = true;
   error.value = null;
   reportData.value = null;
 
   try {
-    const [playerData, summaryData, b27Data, money] = await Promise.all([
+    const [playerData, summaryData, allRecords, money] = await Promise.all([
       fetchData('playerID', sessionToken.value),
       fetchData('summary', sessionToken.value),
-      fetchData('b27', sessionToken.value),
+      fetchData('record', sessionToken.value),
       fetchData('getUserMoney', sessionToken.value)
     ]);
 
     const challengeValue = summaryData.challenge.toString();
 
-    // 数据转换
     const gameuser = {
       background: await getRandomBackground(),
       PlayerId: playerData.playerID,
@@ -136,7 +129,7 @@ const generateReport = async () => {
       ChallengeModeRank: challengeValue.slice(1, 3),
       data: getMoney(money),
     };
-    
+
     const formattedDate = new Date(summaryData.updatedAt).toLocaleString('sv-SE');
     const stats = [
       { title: 'EZ', cleared: summaryData.EZ[0], fc: summaryData.EZ[1], phi: summaryData.EZ[2] },
@@ -145,31 +138,28 @@ const generateReport = async () => {
       { title: 'AT', cleared: summaryData.AT[0], fc: summaryData.AT[1], phi: summaryData.AT[2] },
     ];
 
+    const sortedRecords = allRecords.sort((a, b) => b.rks - a.rks);
+
+    const transformedRecords = sortedRecords.map((song, index) => ({
+      song: song.songName,
+      illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
+      rank: song.level,
+      difficulty: song.difficulty,
+      rks: song.rks,
+      Rating: getCachedRating(song.score, song.fc),
+      score: song.score,
+      acc: song.acc,
+      num: index + 1,
+    }));
+
     const phiSongs = [];
-    const b27Songs = [];
-    let b27Counter = 0;
-    let p3Rks = [];
+    const otherSongs = [];
 
-    b27Data.forEach((song, index) => {
-      const transformedSong = {
-        song: song.songName,
-        illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
-        rank: song.level,
-        difficulty: song.difficulty,
-        rks: song.rks,
-        Rating: getCachedRating(song.score, song.fc),
-        score: song.score,
-        acc: song.acc,
-        suggest: getSuggest(song.acc, summaryData.rks, song.difficulty, p3Rks),
-      };
-
-      if (index < 3 && transformedSong.Rating === 'phi') {
-        phiSongs.push(transformedSong);
-        p3Rks.push(transformedSong.rks);
+    transformedRecords.forEach(song => {
+      if (phiSongs.length < 3 && song.Rating === 'phi') {
+        phiSongs.push(song);
       } else {
-        b27Counter++;
-        transformedSong.num = b27Counter;
-        b27Songs.push(transformedSong);
+        otherSongs.push(song);
       }
     });
 
@@ -177,16 +167,13 @@ const generateReport = async () => {
       phiSongs.push(null);
     }
 
-    const variance = calculateVariance(phiSongs, b27Songs);
-
     const finalData = {
       gameuser,
       Date: formattedDate,
-      spInfo: '',
+      spInfo: `全部记录 (共 ${allRecords.length} 首)`,
       stats,
       phi: phiSongs,
-      b27_list: b27Songs,
-      variance: variance,
+      b27_list: otherSongs,
       _plugin: 'Generated by RKS',
       Version: { ver: '0.0.0' },
     };
@@ -197,10 +184,10 @@ const generateReport = async () => {
     await preloadImages(imageUrls, isLoadingImages, loadedImages, totalImages, imageLoadProgress);
 
   } catch (err) {
-    console.error('生成B27成绩失败:', err);
+    console.error('查询全部记录失败:', err);
     error.value = err.message;
   } finally {
-    isLoading.value = false;
+    isQuerying.value = false;
   }
 };
 
@@ -335,47 +322,6 @@ const exportRecord = () => {
   }
 };
 
-const handleFileImport = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  isLoading.value = true;
-  error.value = null;
-
-  try {
-    const text = await file.text();
-    // 解码Base64数据
-    const jsonStr = decodeURIComponent(escape(atob(text)));
-    const importedData = JSON.parse(jsonStr);
-
-    // 验证导入的数据格式
-    console.log(importedData);
-    console.log(importedData.data);
-    console.log(importedData.data.playerData);
-    if (!importedData.data || !importedData.data.playerData) {
-      throw new Error('无效的记录文件格式');
-    }
-
-    // 更新数据并预加载图片
-    sessionToken.value = '';
-    reportData.value = importedData.data.playerData;
-
-    // 收集并预加载所有图片
-    const imageUrls = collectImageUrls(importedData.data.playerData);
-    await preloadImages(imageUrls);
-
-    // 显示导入成功消息
-    alert(`成功导入记录！\n记录时间: ${new Date(importedData.timestamp).toLocaleString()}`);
-
-  } catch (error) {
-    console.error('导入记录时发生错误:', error);
-    alert('导入记录失败，请确保文件格式正确。');
-    reportData.value = null;
-  } finally {
-    event.target.value = '';
-    isLoading.value = false;
-  }
-};
 
 onMounted(() => {
   isMobileDevice.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -386,7 +332,7 @@ onMounted(() => {
   const token = params.get('sessionToken');
   if (token) {
     sessionToken.value = token;
-    generateReport();
+    queryAllRecords();
     return;
   }
   
@@ -394,7 +340,7 @@ onMounted(() => {
     const taptapToken = Cookies.get('session_token');
     if (taptapToken) {
       sessionToken.value = taptapToken;
-      generateReport();
+      queryAllRecords();
     }
   } catch (e) {
     // 忽略 Cookie 读取错误
@@ -414,7 +360,6 @@ body {
   overflow: visible;
   min-height: 100%;
 }
-
 .page-wrapper {
   display: flex;
   flex-direction: column;
