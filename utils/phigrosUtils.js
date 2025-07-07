@@ -59,7 +59,7 @@ export const getSuggest = (acc, rks, difficulty, pRks) => {
   }
 };
 
-export const calculateVariance = (phiSongs, b27Songs) => {
+export const calculatestdDeviation = (phiSongs, b27Songs) => {
   const allRks = [];
   phiSongs.forEach(song => {
     if (song) allRks.push(song.rks);
@@ -68,8 +68,8 @@ export const calculateVariance = (phiSongs, b27Songs) => {
     allRks.push(song.rks);
   });
   const mean = allRks.reduce((sum, rks) => sum + rks, 0) / allRks.length;
-  const variance = allRks.reduce((sum, rks) => sum + Math.pow(rks - mean, 2), 0) / allRks.length;
-  return variance;
+  const stdDeviation = allRks.reduce((sum, rks) => sum + Math.pow(rks - mean, 2), 0) / allRks.length;
+  return Math.sqrt(stdDeviation);
 };
 
 export const getMoney = (money) => {

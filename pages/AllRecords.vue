@@ -46,7 +46,7 @@
         :stats="reportData.stats" 
         :phi="reportData.phi" 
         :b27_list="reportData.b27_list"
-        :variance="reportData.variance" 
+        :stdDeviation="reportData.stdDeviation" 
         :_plugin="reportData._plugin" 
         :Version="reportData.Version" />
       <div v-else-if="!isQuerying && !error && !reportData" class="status-placeholder">

@@ -784,7 +784,7 @@ body p {
     text-shadow: 0 0 20px #fff700;
 }
 
-.varianceInfo {
+.stdDeviationInfo {
     position: absolute;
     height: 50%;
     width: 10%;
@@ -806,7 +806,7 @@ body p {
     padding: 0 1rem;
 }
 
-.varianceTitle {
+.stdDeviationTitle {
     height: 40%;
     display: flex;
     align-items: center;
@@ -815,20 +815,20 @@ body p {
     justify-content: center;
 }
 
-.varianceTitle p {
+.stdDeviationTitle p {
     font-size: 0.8rem;
     color: #00b0f0;
     font-weight: bold;
 }
 
-.varianceValue {
+.stdDeviationValue {
     height: 60%;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.varianceValue p {
+.stdDeviationValue p {
     font-size: 1.2rem;
     color: white;
     text-shadow: 0 0 10px #00b0f0;

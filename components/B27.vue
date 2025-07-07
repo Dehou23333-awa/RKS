@@ -69,13 +69,13 @@
                     </div>
                 </div>
             </div>
-            <!-- 只有在传入了variance且不为null/undefined时才显示 -->
-            <div class="varianceInfo" v-if="variance !== null && variance !== undefined">
-                <div class="varianceTitle">
-                    <p>VARIANCE</p>
+            <!-- 只有在传入了stdDeviation且不为null/undefined时才显示 -->
+            <div class="stdDeviationInfo" v-if="stdDeviation !== null && stdDeviation !== undefined">
+                <div class="stdDeviationTitle">
+                    <p>stdDeviation</p>
                 </div>
-                <div class="varianceValue">
-                    <p>{{ variance.toFixed(4) }}</p>
+                <div class="stdDeviationValue">
+                    <p>{{ stdDeviation.toFixed(4) }}</p>
                 </div>
             </div>
         </div>
@@ -234,7 +234,7 @@ const props = defineProps({
         type: Array,
         required: true
     },
-    variance: {
+    stdDeviation: {
         type: Number,
         default: null
     },
