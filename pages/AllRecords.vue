@@ -78,6 +78,17 @@
 </template>
 
 <script setup>
+useHead({
+  title: '全部 成绩生成 | RKS',
+  meta: [
+    { name: 'description', content: '查看你的 Phigros 全部游玩记录，包括所有歌曲的成绩、评级和完成度统计。支持导出和分享。' },
+    { name: 'keywords', content: 'Phigros,游玩记录,成绩统计,音游记录' },
+    { property: 'og:title', content: 'Phigros 全部记录 | RKS' },
+    { property: 'og:description', content: '查看你的 Phigros 全部游玩记录，包括所有歌曲的成绩、评级和完成度统计。' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+  ]
+})
 import { ref, onMounted } from 'vue';
 import domtoimage from 'dom-to-image-more';
 import B27Report from '~/components/B27.vue';
@@ -100,7 +111,6 @@ const reportData = ref(null);
 const isQuerying = ref(false);
 const isExporting = ref(false);
 const error = ref(null);
-const fileInput = ref(null);
 const isMobileDevice = ref(false);
 
 // 图片加载相关状态
@@ -114,10 +124,6 @@ const showLinkModal = ref(false);
 const publicLink = ref('');
 const linkCopied = ref(false);
 const linkInput = ref(null);
-
-const triggerFileInput = () => {
-  fileInput.value.click();
-};
 
 const goHome = () => {
   navigateTo('/')

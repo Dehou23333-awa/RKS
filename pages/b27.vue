@@ -78,6 +78,17 @@
 </template>
 
 <script setup>
+useHead({
+  title: 'B27 成绩生成 | RKS',
+  meta: [
+    { name: 'description', content: '生成你的 Phigros B27 成绩图，支持导出图片和创建分享链接。查看你的最佳成绩和 phi 成绩。' },
+    { name: 'keywords', content: 'Phigros,B27,成绩生成,成绩图,音游成绩' },
+    { property: 'og:title', content: 'B27 成绩生成 | Phigros RKS' },
+    { property: 'og:description', content: '生成你的 Phigros B27 成绩图，支持导出图片和创建分享链接。' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+  ]
+})
 import { ref, onMounted, nextTick } from 'vue';
 import domtoimage from 'dom-to-image-more';
 import B27Report from '~/components/B27.vue';
@@ -102,7 +113,6 @@ const reportData = ref(null);
 const isLoading = ref(false);
 const isExporting = ref(false);
 const error = ref(null);
-const fileInput = ref(null);
 const isMobileDevice = ref(false);
 
 // 图片加载相关状态
@@ -117,9 +127,6 @@ const publicLink = ref('');
 const linkCopied = ref(false);
 const linkInput = ref(null);
 
-const triggerFileInput = () => {
-  fileInput.value.click();
-};
 
 const goHome = () => {
   navigateTo('/')

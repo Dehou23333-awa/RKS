@@ -205,6 +205,17 @@
 </template>
 
 <script setup>
+useHead({
+  title: 'Phigros 全曲目浏览 | RKS',
+  meta: [
+    { name: 'description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。支持搜索和试听功能。' },
+    { name: 'keywords', content: 'Phigros,曲目列表,歌曲下载,谱面预览,音游曲库' },
+    { property: 'og:title', content: 'Phigros 全曲目浏览 | RKS' },
+    { property: 'og:description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。支持搜索和试听功能。' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+  ]
+})
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 

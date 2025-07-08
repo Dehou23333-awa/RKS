@@ -20,5 +20,18 @@ export default defineNuxtConfig({
       gitBranch: gitInfo.branch,
       buildTime: new Date().toISOString()
     }
+  },
+  app: {
+    head: {
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1',
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+      ],
+      meta: [
+        { name: 'format-detection', content: 'telephone=no' },
+        { name: 'theme-color', content: '#667eea' }
+      ]
+    }
   }
 })

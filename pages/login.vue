@@ -50,6 +50,18 @@
 </template>
 
 <script>
+useHead({
+  title: '登录 | RKS',
+  meta: [
+    { name: 'description', content: '使用 TapTap 账号登录 Phigros 成绩查询系统，支持多账号管理和 Token 验证。' },
+    { name: 'keywords', content: 'Phigros,TapTap,登录,账号管理' },
+    { property: 'og:title', content: 'TapTap 登录 | Phigros RKS' },
+    { property: 'og:description', content: '使用 TapTap 账号登录 Phigros 成绩查询系统，支持多账号管理和 Token 验证。' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary' },
+    { name: 'robots', content: 'noindex,nofollow' }, // 登录页面不需要被搜索引擎索引
+  ]
+})
 import QrcodeVue from 'qrcode.vue';
 import Cookies from 'js-cookie';
 

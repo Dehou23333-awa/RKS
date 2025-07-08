@@ -16,6 +16,17 @@
 </template>
 
 <script setup>
+useHead({
+  title: 'Welcome to RKS',
+  meta: [
+    { name: 'description', content: 'Phigros B27 成绩查询工具，支持生成 B27 成绩图、查看全部记录、导出成绩等功能。' },
+    { name: 'keywords', content: 'Phigros,B27,成绩查询,音游,RKS' },
+    { property: 'og:title', content: 'Phigros B27 成绩查询 | RKS' },
+    { property: 'og:description', content: 'Phigros B27 成绩查询工具，支持生成 B27 成绩图、查看全部记录、导出成绩等功能。' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+  ]
+})
 </script>
 
 <style scoped>
