@@ -196,6 +196,38 @@
                 </div>
             </template>
         </div>
+        <div class="accStatsBar">
+            <div class="avgAccSection">
+                <div class="avgAccTitle">
+                    <p>Average ACC</p>
+                </div>
+                <div class="avgAccValue">
+                    <p>{{ averageAcc.toFixed(2) }}%</p>
+                </div>
+            </div>
+            <div class="accDistribution">
+                <div class="accDistItem perfect">
+                    <div class="accDistLabel">>99.5%</div>
+                    <div class="accDistCount">{{ accDistribution.a }}</div>
+                </div>
+                <div class="accDistItem">
+                    <div class="accDistLabel">99.0-99.5%</div>
+                    <div class="accDistCount">{{ accDistribution.b }}</div>
+                </div>
+                <div class="accDistItem">
+                    <div class="accDistLabel">98-99%</div>
+                    <div class="accDistCount">{{ accDistribution.c }}</div>
+                </div>
+                <div class="accDistItem">
+                    <div class="accDistLabel">97-98%</div>
+                    <div class="accDistCount">{{ accDistribution.d }}</div>
+                </div>
+                <div class="accDistItem">
+                    <div class="accDistLabel">&lt;97%</div>
+                    <div class="accDistCount">{{ accDistribution.e }}</div>
+                </div>
+            </div>
+        </div>
         <div class="createdbox">
             <div class="phi-plugin">
                 <p>{{ _plugin }}</p>
@@ -247,6 +279,41 @@ const props = defineProps({
         default: () => ({ ver: 'v1.0.0' })
     }
 });
+
+const averageAcc = computed(() => {
+    const allSongs = [...props.phi.filter(Boolean), ...props.b27_list.slice(0,27)];
+    if (allSongs.length === 0) return 0;
+    const totalAcc = allSongs.reduce((sum, song) => sum + song.acc, 0);
+    return totalAcc / allSongs.length;
+});
+
+const accDistribution = computed(() => {
+    const allSongs = [...props.phi.filter(Boolean), ...props.b27_list.slice(0,27)];
+    const distribution = {
+        a: 0,
+        b: 0, // >99%
+        c: 0, // 98-99%
+        d: 0, // 97-98%
+        e: 0  // <97%
+    };
+
+    allSongs.forEach(song => {
+        if (song.acc >= 99.5) {
+            distribution.a++;
+        } else if (song.acc >= 99) {
+            distribution.b++;
+        } else if (song.acc >= 98) {
+            distribution.c++;
+        } else if (song.acc >= 97) {
+            distribution.d++;
+        } else {
+            distribution.e++;
+        }
+    });
+
+    return distribution;
+});
+
 // Import the CSS for this component
 import '~/assets/b27/b27.css';
 

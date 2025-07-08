@@ -833,3 +833,74 @@ body p {
     color: white;
     text-shadow: 0 0 10px #00b0f0;
 }
+
+.accStatsBar {
+    width: 96%;
+    height: 60px;
+    margin: 2% auto;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: relative;
+    z-index: 3;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.avgAccSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+    border-right: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.avgAccTitle {
+    margin-bottom: 0.2rem;
+}
+
+.avgAccTitle p {
+    font-size: 0.8rem;
+    color: #92d050;
+    font-weight: bold;
+    margin: 0;
+}
+
+.avgAccValue p {
+    font-size: 1.2rem;
+    color: white;
+    text-shadow: 0 0 10px #92d050;
+    margin: 0;
+}
+
+.accDistribution {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    flex: 1;
+    padding: 0 1rem;
+}
+
+.accDistItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 0.8rem;
+}
+
+.accDistLabel {
+    font-size: 0.7rem;
+    color: #00b0f0;
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+}
+
+.accDistCount {
+    font-size: 1.1rem;
+    color: white;
+    text-shadow: 0 0 8px #00b0f0;
+    margin: 0;
+}
