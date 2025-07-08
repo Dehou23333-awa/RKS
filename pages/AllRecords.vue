@@ -15,9 +15,30 @@
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? (isMobileDevice ? '导出中(请耐心等待)...' : '正在导出...') : '导出为图片' }}
       </button>
-      <button @click="exportRecord" :disabled="!reportData">
-        导出记录
+      <button @click="createPublicLink" :disabled="!reportData">
+        创建公开链接
       </button>
+    </div>
+
+    <!-- 公开链接弹窗 -->
+    <div v-if="showLinkModal" class="modal-overlay" @click="closeLinkModal">
+      <div class="modal-content" @click.stop>
+        <h3>公开链接已生成</h3>
+        <div class="link-container">
+          <input 
+            ref="linkInput"
+            :value="publicLink" 
+            readonly 
+            class="link-input"
+            @click="selectLink"
+          />
+          <button @click="copyLink" class="copy-button">
+            {{ linkCopied ? '已复制' : '复制链接' }}
+          </button>
+        </div>
+        <p class="link-hint">分享此链接即可让他人查看您的全部记录</p>
+        <button @click="closeLinkModal" class="close-button">关闭</button>
+      </div>
     </div>
 
     <!-- 加载和错误状态显示 -->
@@ -87,6 +108,12 @@ const isLoadingImages = ref(false);
 const loadedImages = ref(0);
 const totalImages = ref(0);
 const imageLoadProgress = ref(0);
+
+// 公开链接相关状态
+const showLinkModal = ref(false);
+const publicLink = ref('');
+const linkCopied = ref(false);
+const linkInput = ref(null);
 
 const triggerFileInput = () => {
   fileInput.value.click();
@@ -194,7 +221,7 @@ const queryAllRecords = async () => {
 const exportAsImage = async () => {
   const node = reportContainerRef.value;
   if (!node || !reportData.value) {
-    alert('没有可导出的B27成绩内容！');
+    alert('没有可导出的全部记录内容！');
     return;
   }
 
@@ -262,7 +289,7 @@ const exportAsImage = async () => {
     const link = document.createElement('a');
     link.href = dataUrl;
     const extension = format === 'jpeg' ? 'jpg' : 'png';
-    link.download = `Phigros-B27-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.${extension}`;
+    link.download = `Phigros-AllRecords-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.${extension}`;
 
     // 添加到DOM并触发下载
     document.body.appendChild(link);
@@ -288,62 +315,135 @@ const exportAsImage = async () => {
   }
 };
 
-const exportRecord = () => {
+const createPublicLink = () => {
   if (!reportData.value) {
-    alert('没有可导出的记录！');
+    alert('请先查询全部记录！');
     return;
   }
 
   try {
-    const exportData = {
+    // 创建要分享的数据（精简版本，去除不必要的信息）
+    const shareData = {
       timestamp: new Date().toISOString(),
-      data: {
-        playerData: reportData.value,
-      }
+      data: reportData.value
     };
 
-    // 转换为JSON字符串并Base64编码
-    const jsonStr = JSON.stringify(exportData);
-    const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
+    // 将数据压缩并编码
+    const jsonStr = JSON.stringify(shareData);
+    const compressed = btoa(unescape(encodeURIComponent(jsonStr)));
+    
+    // 生成公开链接
+    const baseUrl = window.location.origin + window.location.pathname;
+    publicLink.value = `${baseUrl}?share=${compressed}`;
+    
+    // 如果链接太长，可以考虑使用hash而不是query参数
+    if (publicLink.value.length > 2000) {
+      publicLink.value = `${baseUrl}#share=${compressed}`;
+    }
 
-    // 创建并下载文件
-    const blob = new Blob([base64Data], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Phigros-B27-Record-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+    // 显示链接弹窗
+    showLinkModal.value = true;
+    linkCopied.value = false;
 
   } catch (error) {
-    console.error('导出记录时发生错误:', error);
-    alert('导出记录失败，请查看控制台获取更多信息。');
+    console.error('创建公开链接失败:', error);
+    alert('创建公开链接失败，数据可能过大。');
   }
 };
 
+const copyLink = async () => {
+  try {
+    await navigator.clipboard.writeText(publicLink.value);
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  } catch (error) {
+    // 如果剪贴板API不可用，使用传统方法
+    selectLink();
+    document.execCommand('copy');
+    linkCopied.value = true;
+    setTimeout(() => {
+      linkCopied.value = false;
+    }, 2000);
+  }
+};
 
-onMounted(() => {
+const selectLink = () => {
+  if (linkInput.value) {
+    linkInput.value.select();
+  }
+};
+
+const closeLinkModal = () => {
+  showLinkModal.value = false;
+  publicLink.value = '';
+};
+
+// 处理从分享链接加载数据
+const loadFromShareLink = async () => {
+  // 检查URL参数
+  const urlParams = new URLSearchParams(window.location.search);
+  const shareData = urlParams.get('share');
+  
+  // 如果没有在query参数中找到，检查hash
+  const hashData = window.location.hash.replace('#share=', '');
+  const dataToLoad = shareData || (hashData !== window.location.hash ? hashData : null);
+
+  if (dataToLoad) {
+    isQuerying.value = true;
+    try {
+      // 解码数据
+      const jsonStr = decodeURIComponent(escape(atob(dataToLoad)));
+      const importedData = JSON.parse(jsonStr);
+
+      if (importedData.data) {
+        reportData.value = importedData.data;
+        
+        // 收集并预加载所有图片
+        const imageUrls = collectImageUrls(importedData.data);
+        await preloadImages(imageUrls, isLoadingImages, loadedImages, totalImages, imageLoadProgress);
+
+        // 清除URL中的分享参数
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    } catch (error) {
+      console.error('加载分享数据失败:', error);
+      alert('加载分享的全部记录失败，链接可能已损坏。');
+    } finally {
+      isQuerying.value = false;
+    }
+  }
+};
+
+onMounted(async () => {
   isMobileDevice.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
     window.innerWidth <= 768 ||
     'ontouchstart' in window;
 
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('sessionToken');
-  if (token) {
-    sessionToken.value = token;
-    queryAllRecords();
-    return;
-  }
-  
-  try {
-    const taptapToken = Cookies.get('session_token');
-    if (taptapToken) {
-      sessionToken.value = taptapToken;
+  // 首先检查是否有分享链接
+  await loadFromShareLink();
+
+  // 如果没有从分享链接加载数据，再检查其他参数
+  if (!reportData.value) {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('sessionToken');
+    if (token) {
+      sessionToken.value = token;
       queryAllRecords();
+      return;
     }
-  } catch (e) {
-    // 忽略 Cookie 读取错误
+    
+    try {
+      const taptapToken = Cookies.get('session_token');
+      if (taptapToken) {
+        sessionToken.value = taptapToken;
+        queryAllRecords();
+      }
+    } catch (e) {
+      // 忽略 Cookie 读取错误
+    }
   }
 });
 </script>
@@ -429,6 +529,88 @@ body {
   color: #d9534f;
   background-color: #f2dede;
   border-color: #d9534f;
+}
+
+/* 公开链接弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 90%;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #333;
+  text-align: center;
+}
+
+.link-container {
+  display: flex;
+  gap: 10px;
+  margin: 1.5rem 0;
+}
+
+.link-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  background-color: #f8f9fa;
+}
+
+.copy-button {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.copy-button:hover {
+  background-color: #218838;
+}
+
+.link-hint {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin: 1rem 0;
+}
+
+.close-button {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 30px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.close-button:hover {
+  background-color: #5a6268;
 }
 
 /* 进度条样式 */
