@@ -196,7 +196,7 @@
                 </div>
             </template>
         </div>
-        <div class="accStatsBar">
+        <div class="accStatsBar" v-if='mode === "b27"'>
             <div class="avgAccSection">
                 <div class="avgAccTitle">
                     <p>Average ACC</p>
@@ -242,6 +242,10 @@
 <script setup>
 
 const props = defineProps({
+    mode: {
+        type: String,
+        required: true
+    },
     gameuser: {
         type: Object,
         required: true,

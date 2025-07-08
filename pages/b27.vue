@@ -158,6 +158,7 @@ const generateReport = async () => {
 
     // 数据转换
     const gameuser = {
+      mode: "b27",
       background: await getRandomBackground(),
       PlayerId: playerData.playerID,
       avatar: summaryData.avatar,

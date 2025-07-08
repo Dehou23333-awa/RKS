@@ -154,6 +154,7 @@ const queryAllRecords = async () => {
     const challengeValue = summaryData.challenge.toString();
 
     const gameuser = {
+      mode: "AllRecords",
       background: await getRandomBackground(),
       PlayerId: playerData.playerID,
       avatar: summaryData.avatar,
