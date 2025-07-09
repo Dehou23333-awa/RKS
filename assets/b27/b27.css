@@ -904,3 +904,22 @@ body p {
     text-shadow: 0 0 8px #00b0f0;
     margin: 0;
 }
+
+.backgroundName {
+    position: absolute;
+    left: 11%;
+    top: -20px;
+    color: white;
+    font-size: 0.9rem;
+    max-width: 300px;
+    height: 20px;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.backgroundName p {
+    margin: 0;
+    width: 100%;
+}

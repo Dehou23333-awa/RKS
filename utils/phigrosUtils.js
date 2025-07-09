@@ -22,11 +22,12 @@ export const getCachedRating = (score, fc) => {
 
 export const getRandomBackground = async () => {
   try {
-    const response = await fetch('/api/songs');
+    const response = await fetch('/api/songs?limit=500');
     const data = await response.json();
     const songs = data.songs;
     const randomSong = songs[Math.floor(Math.random() * songs.length)];
-    return `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${randomSong.id}.png`;
+    return {id: randomSong.id, name: randomSong.name};
+    // return {id: "光.姜米條", name: "光"};
   } catch (error) {
     console.error('Failed to get random background:', error);
     return null;
@@ -141,7 +142,7 @@ export const preloadImages = async (imageUrls, isLoadingImages, loadedImages, to
 export const collectImageUrls = (data) => {
   const urls = [];
   if (data.gameuser?.background) {
-    urls.push(data.gameuser.background);
+    urls.push(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${data.gameuser.background.id}.png`);
   }
   if (data.phi) {
     data.phi.forEach(song => {

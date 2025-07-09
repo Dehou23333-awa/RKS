@@ -76,7 +76,7 @@ useHead({
     { name: 'twitter:card', content: 'summary_large_image' },
   ]
 })
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted } from 'vue';
 import domtoimage from 'dom-to-image-more';
 import B27Report from '~/components/B27.vue';
 import Cookies from 'js-cookie';

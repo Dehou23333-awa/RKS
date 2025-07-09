@@ -1,7 +1,8 @@
 <template>
     <div>
         <div class="background">
-            <img :src="gameuser.background" alt="曲绘-模糊" id="bkg" />
+            <img :src="`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${gameuser.background.id}.png`"
+                alt="曲绘-模糊" id="bkg" />
         </div>
         <div class="title">
             <div class="playerInfo">
@@ -20,6 +21,9 @@
                         <img :src="`/b27/otherimg/${gameuser.ChallengeMode}.png`" alt="Challenge">
                         <p>{{ gameuser.ChallengeModeRank }}</p>
                     </div>
+                </div>
+                <div class="backgroundName">
+                    <p name="pvis">BackGround: {{ gameuser.background.name }}</p>
                 </div>
                 <div class="date">
                     <p>{{ formattedDate }}</p>
