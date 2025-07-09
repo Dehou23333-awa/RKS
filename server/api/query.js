@@ -380,6 +380,18 @@ export default defineEventHandler(async (event) => {
             result = await getb27(sessionToken);
         } else if (action === 'record') {
             result = await getRecord(sessionToken)
+        } else if (action === 'b27report') {
+            const b27 = await getb27(sessionToken);
+            const playerName = await getPlayerId(sessionToken);
+            const summary = await getSummary(sessionToken);
+            const money = await getUserMoney(sessionToken);
+            result = {playerName: playerName, summary: summary, money: money, b27: b27};
+        } else if (action === 'Allreport') {
+            const record = await getRecord(sessionToken);
+            const playerName = await getPlayerId(sessionToken);
+            const summary = await getSummary(sessionToken);
+            const money = await getUserMoney(sessionToken);
+            result = {playerName: playerName, summary: summary, money: money, record: record};
         } else if (action === 'OriginSummary') {
             result = await getOriginSummary(sessionToken);
         } else if (action === 'encodeSummary') {

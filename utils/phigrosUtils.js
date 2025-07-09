@@ -82,8 +82,8 @@ export const getMoney = (money) => {
   return data;
 };
 
-export const fetchData = async (action, token) => {
-  const response = await fetch(`/api/query?action=${action}`);
+export const fetchData = async (op) => {
+  const response = await fetch(`/api/query?action=${op}`);
   if (!response.ok) {
     const errData = await response.json();
     throw new Error(`API action '${action}' failed: ${errData.body || response.statusText}`);

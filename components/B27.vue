@@ -280,21 +280,21 @@ const props = defineProps({
     },
     Version: {
         type: Object,
-        default: () => ({ ver: 'v1.0.0' })
+        default: () => ({ ver: 'v0.1.0' })
     }
 });
 
 const averageAcc = computed(() => {
-    const allSongs = [...props.phi.filter(Boolean), ...props.b27_list.slice(0,27)];
+    const allSongs = props.b27_list.slice(0, 27);
     if (allSongs.length === 0) return 0;
     const totalAcc = allSongs.reduce((sum, song) => sum + song.acc, 0);
     return totalAcc / allSongs.length;
 });
 
 const accDistribution = computed(() => {
-    const allSongs = [...props.phi.filter(Boolean), ...props.b27_list.slice(0,27)];
+    const allSongs = props.b27_list.slice(0, 27);
     const distribution = {
-        a: 0,
+        a: 0, // >99.5%
         b: 0, // >99%
         c: 0, // 98-99%
         d: 0, // 97-98%
