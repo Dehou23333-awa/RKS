@@ -143,9 +143,6 @@ export const collectImageUrls = (data) => {
   if (data.gameuser?.background) {
     urls.push(data.gameuser.background);
   }
-  if (data.gameuser?.avatar) {
-    urls.push(data.gameuser.avatar);
-  }
   if (data.phi) {
     data.phi.forEach(song => {
       if (song?.illustration) {
