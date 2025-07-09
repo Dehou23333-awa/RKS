@@ -1,8 +1,7 @@
 <template>
     <div>
         <div class="background">
-            <img :src="`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${gameuser.background.id}.png`"
-                alt="曲绘-模糊" id="bkg" />
+            <img :src="getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${gameuser.background.id}.png`)" alt="曲绘-模糊" />
         </div>
         <div class="title">
             <div class="playerInfo">
@@ -324,6 +323,7 @@ const accDistribution = computed(() => {
 
 // Import the CSS for this component
 import '~/assets/b27/b27.css';
+import { getProxiedUrl } from '~/utils/proxyUtils';
 
 function adjustFontSize() {
     const elements = document.getElementsByName("pvis");

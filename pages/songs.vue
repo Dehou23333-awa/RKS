@@ -16,59 +16,15 @@
       </div>
     </header>
 
-    <!-- 代理设置模态框 -->
-    <Teleport to="body">
-      <div v-if="showProxySettings" class="modal-overlay" @click="showProxySettings = false">
-        <div class="modal-content" @click.stop>
-          <h2 class="modal-title">GitHub 代理设置</h2>
-
-          <div class="proxy-options">
-            <label class="proxy-option">
-              <input type="radio" v-model="proxyType" value="none" />
-              <span>直接访问（不使用代理）</span>
-            </label>
-
-            <label class="proxy-option">
-              <input type="radio" v-model="proxyType" value="preset" />
-              <span>使用预设代理</span>
-            </label>
-
-            <div v-if="proxyType === 'preset'" class="preset-list">
-              <label v-for="proxy in presetProxies" :key="proxy.url" class="preset-item">
-                <input type="radio" v-model="selectedPreset" :value="proxy.url" />
-                <span>{{ proxy.name }}</span>
-                <span class="proxy-url">{{ proxy.url }}</span>
-              </label>
-            </div>
-
-            <label class="proxy-option">
-              <input type="radio" v-model="proxyType" value="custom" />
-              <span>自定义代理</span>
-            </label>
-
-            <div v-if="proxyType === 'custom'" class="custom-input">
-              <input v-model="customProxy" type="text" placeholder="输入代理URL，例如: https://ghproxy.com/"
-                class="proxy-input" />
-              <p class="proxy-hint">
-                代理URL应以 https:// 开头并以 / 结尾
-              </p>
-            </div>
-          </div>
-
-          <div class="current-proxy" v-if="currentProxyUrl">
-            <strong>当前代理:</strong> {{ currentProxyUrl || '未设置' }}
-          </div>
-
-          <div class="modal-actions">
-            <button @click="saveProxySettings" class="save-btn">保存设置</button>
-            <button @click="showProxySettings = false" class="cancel-btn">取消</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 代理设置组件 -->
+    <ProxySettings 
+      :show="showProxySettings" 
+      @close="showProxySettings = false" 
+      @save="handleProxySave"
+      ref="proxySettingsRef"
+    />
 
     <main class="main-content">
-      <!-- 其余内容保持不变 -->
       <!-- 加载状态 -->
       <div v-if="pending" class="loading">
         <div class="spinner"></div>
@@ -218,6 +174,7 @@ useHead({
 })
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
+import ProxySettings from '~/components/ProxySettings.vue'
 
 const searchTerm = ref('')
 const currentPage = ref(1)
@@ -227,18 +184,9 @@ const pageSize = ref(20)
 const downloadingSongs = ref({})
 const downloadProgress = ref({})
 
-// 代理相关状态
+// 代理设置状态
 const showProxySettings = ref(false)
-const proxyType = ref('none')
-const selectedPreset = ref('')
-const customProxy = ref('')
-const currentProxyUrl = ref('')
-
-// 预设代理列表
-const presetProxies = [
-  { name: 'GHProxy', url: 'https://ghfast.top/' },
-  { name: 'Goppx', url: 'https://goppx.com/' },
-]
+const proxySettingsRef = ref(null)
 
 // 运行时配置
 const config = useRuntimeConfig()
@@ -263,60 +211,17 @@ const musicProgress = computed({
   }
 })
 
-// 加载代理设置
-const loadProxySettings = () => {
-  const savedProxy = localStorage.getItem('githubProxy')
-  const savedProxyType = localStorage.getItem('githubProxyType')
-
-  if (savedProxyType) {
-    proxyType.value = savedProxyType
-
-    if (savedProxyType === 'preset' && savedProxy) {
-      selectedPreset.value = savedProxy
-      currentProxyUrl.value = savedProxy
-    } else if (savedProxyType === 'custom' && savedProxy) {
-      customProxy.value = savedProxy
-      currentProxyUrl.value = savedProxy
-    } else {
-      currentProxyUrl.value = ''
-    }
-  }
-}
-
-// 保存代理设置
-const saveProxySettings = () => {
-  let proxyUrl = ''
-
-  if (proxyType.value === 'preset' && selectedPreset.value) {
-    proxyUrl = selectedPreset.value
-  } else if (proxyType.value === 'custom' && customProxy.value) {
-    // 确保自定义代理URL格式正确
-    let url = customProxy.value.trim()
-    if (url && !url.endsWith('/')) {
-      url += '/'
-    }
-    proxyUrl = url
-  }
-
-  localStorage.setItem('githubProxyType', proxyType.value)
-  localStorage.setItem('githubProxy', proxyUrl)
-  currentProxyUrl.value = proxyUrl
-
+// 处理代理设置保存
+const handleProxySave = (proxyConfig) => {
   showProxySettings.value = false
-
-  // 刷新页面以应用新的代理设置
   refresh()
 }
 
-// 应用代理到GitHub URL
-const applyProxy = (url) => {
-  if (!currentProxyUrl.value || !url) return url
-
-  // 检查是否是GitHub URL
-  if (url.includes('github.com') || url.includes('githubusercontent.com')) {
-    return currentProxyUrl.value + url
+// 获取代理后的URL
+const getProxiedUrl = (url) => {
+  if (proxySettingsRef.value) {
+    return proxySettingsRef.value.applyProxy(url)
   }
-
   return url
 }
 
@@ -332,7 +237,6 @@ const handleSearch = () => {
   }, 300)
 }
 
-//返回首页
 const goHome = () => {
   navigateTo('/')
 }
@@ -347,22 +251,22 @@ const { data, pending, error, refresh } = await useFetch('/api/songs', {
   server: false
 })
 
-// 获取曲绘URL - 应用代理
+// 获取曲绘URL
 const getIllustrationUrl = (songId) => {
   const url = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${songId}.png`
-  return applyProxy(url)
+  return getProxiedUrl(url)
 }
 
-// 获取音乐URL - 应用代理
+// 获取音乐URL
 const getMusicUrl = (songId) => {
   const url = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/music/${songId}.ogg`
-  return applyProxy(url)
+  return getProxiedUrl(url)
 }
 
-// 获取高清曲绘URL - 应用代理
+// 获取高清曲绘URL
 const getIllustrationHDUrl = async (songId) => {
   const apiUrl = 'https://api.github.com/repos/7aGiven/Phigros_Resource/git/trees/illustration?recursive=1'
-  const proxiedApiUrl = applyProxy(apiUrl)
+  const proxiedApiUrl = getProxiedUrl(apiUrl)
 
   try {
     const headers = { 'User-Agent': userAgentString }
@@ -386,7 +290,7 @@ const getIllustrationHDUrl = async (songId) => {
       )
       if (foundItem) {
         const url = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/illustration/${foundItem.path}`
-        return applyProxy(url)
+        return getProxiedUrl(url)
       }
     }
   } catch (error) {
@@ -395,10 +299,10 @@ const getIllustrationHDUrl = async (songId) => {
   return null
 }
 
-// 获取谱面文件URL - 应用代理
+// 获取谱面文件URL
 const getChartUrl = async (songId, difficulty) => {
   const chartUrl = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/chart/${songId}.0/${difficulty}.json`
-  const proxiedUrl = applyProxy(chartUrl)
+  const proxiedUrl = getProxiedUrl(chartUrl)
 
   try {
     const response = await fetch(proxiedUrl, { method: 'HEAD' })
@@ -629,7 +533,6 @@ const getPageNumbers = () => {
 // 初始化
 onMounted(() => {
   setVolume()
-  loadProxySettings()
 })
 
 // 清理音频
@@ -642,7 +545,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 保留原有样式 */
+/* 保留原有样式，移除代理相关样式 */
 * {
   box-sizing: border-box;
 }
@@ -1328,7 +1231,6 @@ onUnmounted(() => {
   flex: 1;
 }
 
-/* 新增代理设置相关样式 */
 .settings-btn {
   padding: 0.5rem;
   background: rgba(102, 126, 234, 0.1);
@@ -1347,156 +1249,6 @@ onUnmounted(() => {
 .settings-btn:hover {
   background: #667eea;
   transform: rotate(180deg);
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 15px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0 0 1.5rem 0;
-  color: #2d3748;
-}
-
-.proxy-options {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.proxy-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background 0.3s ease;
-}
-
-.proxy-option:hover {
-  background: #f7fafc;
-}
-
-.preset-list {
-  margin-left: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.preset-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.preset-item:hover {
-  background: #e2e8f0;
-}
-
-.proxy-url {
-  font-size: 0.8rem;
-  color: #666;
-  margin-left: auto;
-}
-
-.custom-input {
-  margin-left: 2rem;
-  margin-top: 0.5rem;
-}
-
-.proxy-input {
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  transition: border-color 0.3s ease;
-}
-
-.proxy-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.proxy-hint {
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 0.5rem;
-}
-
-.current-proxy {
-  padding: 1rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.save-btn {
-  padding: 0.5rem 1.5rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.save-btn:hover {
-  background: #5a67d8;
-  transform: translateY(-2px);
-}
-
-.cancel-btn {
-  padding: 0.5rem 1.5rem;
-  background: #e2e8f0;
-  color: #4a5568;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cancel-btn:hover {
-  background: #cbd5e0;
 }
 
 @media (max-width: 768px) {
@@ -1575,10 +1327,6 @@ onUnmounted(() => {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
-  }
-
-  .modal-content {
-    padding: 1.5rem;
   }
 }
 

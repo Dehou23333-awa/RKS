@@ -2,22 +2,23 @@
   <div class="page-wrapper">
     <!-- 用户输入和控制区域 -->
     <div class="controls-wrapper">
-      <button @click="goHome">
-        返回首页
-      </button>
+      <button @click="goHome">返回首页</button>
       <button @click="generateReport" :disabled="isLoading">
         {{ isLoading ? '正在生成...' : '生成B27成绩' }}
       </button>
-      <button @click="goToAllRecords">
-        查看全部记录
-      </button>
+      <button @click="goToAllRecords">查看全部记录</button>
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? (isMobileDevice ? '导出中(请耐心等待)...' : '正在导出...') : '导出为图片' }}
       </button>
-      <button @click="createPublicLink" :disabled="!reportData">
-        创建公开链接
+      <button @click="createPublicLink" :disabled="!reportData">创建公开链接</button>
+      <button @click="showProxySettings = true" class="settings-btn" title="GitHub 代理设置">
+        ⚙️ 代理设置
       </button>
     </div>
+
+    <!-- 代理设置组件 -->
+    <ProxySettings :show="showProxySettings" @close="showProxySettings = false" @save="handleProxySave"
+      ref="proxySettingsRef" />
 
     <!-- 公开链接弹窗 -->
     <div v-if="showLinkModal" class="modal-overlay" @click="closeLinkModal">
@@ -80,6 +81,7 @@ import { ref, onMounted } from 'vue';
 import domtoimage from 'dom-to-image-more';
 import B27Report from '~/components/B27.vue';
 import Cookies from 'js-cookie';
+import ProxySettings from '~/components/ProxySettings.vue';
 
 // 导入共享的工具函数
 import {
@@ -113,14 +115,37 @@ const publicLink = ref('');
 const linkCopied = ref(false);
 const linkInput = ref(null);
 
+// 代理设置状态
+const showProxySettings = ref(false);
+const proxySettingsRef = ref(null);
+
+// 处理代理设置保存
+const handleProxySave = (proxyConfig) => {
+  showProxySettings.value = false;
+
+  if (reportData.value) {
+    const shouldRegenerate = confirm('代理设置已保存。是否重新生成B27成绩以应用新的代理设置？');
+    if (shouldRegenerate) {
+      generateReport();
+    }
+  }
+};
+
+// 获取代理后的URL
+const getProxiedUrl = (url) => {
+  if (proxySettingsRef.value) {
+    return proxySettingsRef.value.applyProxy(url);
+  }
+  return url;
+};
 
 const goHome = () => {
-  navigateTo('/')
-}
+  navigateTo('/');
+};
 
 const goToAllRecords = () => {
-  navigateTo(`/AllRecords`)
-}
+  navigateTo(`/AllRecords`);
+};
 
 const generateReport = async () => {
 
@@ -164,7 +189,7 @@ const generateReport = async () => {
     b27Data.forEach((song, index) => {
       const transformedSong = {
         song: song.songName,
-        illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
+        illustration: getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`),
         rank: song.level,
         difficulty: song.difficulty,
         rks: song.rks,
@@ -499,6 +524,17 @@ body {
 .controls-wrapper button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+}
+
+.settings-btn {
+  background-color: #6c757d !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-btn:hover {
+  background-color: #5a6268 !important;
 }
 
 .status-placeholder {

@@ -90,6 +90,7 @@ import {
   preloadImages,
   collectImageUrls
 } from '~/utils/phigrosUtils';
+import { getProxiedUrl } from '~/utils/proxyUtils'
 
 // 状态管理
 const reportContainerRef = ref(null);
@@ -132,7 +133,6 @@ const queryAllRecords = async () => {
     const money = apiData.money;
     const allRecords = apiData.record;
     const challengeValue = summaryData.challenge.toString();
-    console.log(allRecords)
 
     const gameuser = {
       mode: "AllRecords",
@@ -157,7 +157,7 @@ const queryAllRecords = async () => {
 
     const transformedRecords = sortedRecords.map((song, index) => ({
       song: song.songName,
-      illustration: `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`,
+      illustration: getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`),
       rank: song.level,
       difficulty: song.difficulty,
       rks: song.rks,
