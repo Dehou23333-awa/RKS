@@ -381,23 +381,23 @@ export default defineEventHandler(async (event) => {
         } else if (action === 'record') {
             result = await getRecord(sessionToken)
         } else if (action === 'b27report') {
-            const b27 = await getb27(sessionToken);
-            const playerName = await getPlayerId(sessionToken);
-            const summary = await getSummary(sessionToken);
-            const money = await getUserMoney(sessionToken);
-            result = {playerName: playerName, summary: summary, money: money, b27: b27};
+            const [b27, playerName, summary, money] = await Promise.all([
+                getb27(sessionToken),
+                getPlayerId(sessionToken),
+                getSummary(sessionToken),
+                getUserMoney(sessionToken)
+            ]);
+            result = { playerName: playerName, summary: summary, money: money, b27: b27 };
         } else if (action === 'Allreport') {
-            const record = await getRecord(sessionToken);
-            const playerName = await getPlayerId(sessionToken);
-            const summary = await getSummary(sessionToken);
-            const money = await getUserMoney(sessionToken);
-            result = {playerName: playerName, summary: summary, money: money, record: record};
+            const [record, playerName, summary, money] = await Promise.all([
+                getrecord(sessionToken),
+                getPlayerId(sessionToken),
+                getSummary(sessionToken),
+                getUserMoney(sessionToken)
+            ]);
+            result = { playerName: playerName, summary: summary, money: money, record: record };
         } else if (action === 'OriginSummary') {
             result = await getOriginSummary(sessionToken);
-        } else if (action === 'encodeSummary') {
-            const summaryParams = await readBody(event);
-            const encodedData = encodeSummary(summaryParams);
-            result = { encodedSummary: encodedData };
         } else if (action === 'getUserMoney') {
             result = await getUserMoney(sessionToken);
         }
