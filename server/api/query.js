@@ -390,7 +390,7 @@ export default defineEventHandler(async (event) => {
             result = { playerName: playerName, summary: summary, money: money, b27: b27 };
         } else if (action === 'Allreport') {
             const [record, playerName, summary, money] = await Promise.all([
-                getrecord(sessionToken),
+                getRecord(sessionToken),
                 getPlayerId(sessionToken),
                 getSummary(sessionToken),
                 getUserMoney(sessionToken)
