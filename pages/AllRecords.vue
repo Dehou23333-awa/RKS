@@ -17,6 +17,158 @@
       <button @click="createPublicLink" :disabled="!reportData">
         创建公开链接
       </button>
+      <button @click="toggleFilter" :disabled="!reportData" class="filter-button">
+        {{ showFilter ? '隐藏筛选' : '筛选成绩' }}
+        <span v-if="hasActiveFilters" class="filter-badge">{{ filteredCount }}</span>
+      </button>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div v-if="showFilter && reportData" class="filter-panel">
+      <div class="filter-header">
+        <h3>成绩筛选</h3>
+        <button @click="resetFilters" class="reset-button">重置筛选</button>
+      </div>
+      
+      <div class="filter-grid">
+        <!-- 分数筛选 -->
+        <div class="filter-group">
+          <label>分数范围</label>
+          <div class="range-inputs">
+            <input 
+              type="number" 
+              v-model.number="filters.score.min" 
+              placeholder="最小分数" 
+              min="0" 
+              max="1000000"
+              @input="applyFilters"
+            />
+            <span>-</span>
+            <input 
+              type="number" 
+              v-model.number="filters.score.max" 
+              placeholder="最大分数" 
+              min="0" 
+              max="1000000"
+              @input="applyFilters"
+            />
+          </div>
+        </div>
+
+        <!-- 定数筛选 -->
+        <div class="filter-group">
+          <label>定数范围</label>
+          <div class="range-inputs">
+            <input 
+              type="number" 
+              v-model.number="filters.level.min" 
+              placeholder="最小定数" 
+              min="0" 
+              max="20"
+              step="0.1"
+              @input="applyFilters"
+            />
+            <span>-</span>
+            <input 
+              type="number" 
+              v-model.number="filters.level.max" 
+              placeholder="最大定数" 
+              min="0" 
+              max="20"
+              step="0.1"
+              @input="applyFilters"
+            />
+          </div>
+        </div>
+
+        <!-- ACC筛选 -->
+        <div class="filter-group">
+          <label>ACC范围 (%)</label>
+          <div class="range-inputs">
+            <input 
+              type="number" 
+              v-model.number="filters.acc.min" 
+              placeholder="最小ACC" 
+              min="0" 
+              max="100"
+              step="0.01"
+              @input="applyFilters"
+            />
+            <span>-</span>
+            <input 
+              type="number" 
+              v-model.number="filters.acc.max" 
+              placeholder="最大ACC" 
+              min="0" 
+              max="100"
+              step="0.01"
+              @input="applyFilters"
+            />
+          </div>
+        </div>
+
+        <!-- 单曲RKS筛选 -->
+        <div class="filter-group">
+          <label>单曲RKS范围</label>
+          <div class="range-inputs">
+            <input 
+              type="number" 
+              v-model.number="filters.rks.min" 
+              placeholder="最小RKS" 
+              min="0" 
+              max="20"
+              step="0.01"
+              @input="applyFilters"
+            />
+            <span>-</span>
+            <input 
+              type="number" 
+              v-model.number="filters.rks.max" 
+              placeholder="最大RKS" 
+              min="0" 
+              max="20"
+              step="0.01"
+              @input="applyFilters"
+            />
+          </div>
+        </div>
+
+        <!-- 评级筛选 -->
+        <div class="filter-group">
+          <label>评级</label>
+          <div class="checkbox-group">
+            <label v-for="rating in ['phi', 'V', 'S', 'A', 'B', 'C', 'F']" :key="rating">
+              <input 
+                type="checkbox" 
+                v-model="filters.ratings" 
+                :value="rating"
+                @change="applyFilters"
+              />
+              {{ rating }}
+            </label>
+          </div>
+        </div>
+
+        <!-- 难度筛选 -->
+        <div class="filter-group">
+          <label>难度</label>
+          <div class="checkbox-group">
+            <label v-for="diff in ['EZ', 'HD', 'IN', 'AT']" :key="diff">
+              <input 
+                type="checkbox" 
+                v-model="filters.difficulties" 
+                :value="diff"
+                @change="applyFilters"
+              />
+              {{ diff }}
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-summary">
+        筛选结果：{{ filteredCount }} / {{ totalCount }} 首歌曲
+      </div>
     </div>
 
     <!-- 公开链接弹窗 -->
@@ -53,10 +205,17 @@
 
     <!-- 全部记录容器 -->
     <div ref="reportContainerRef" class="report-container" :class="{ 'exporting': isExporting }">
-      <B27Report v-if="reportData && !isLoadingImages" :mode="reportData.gameuser.mode" :gameuser="reportData.gameuser"
-        :formattedDate="reportData.Date" :spInfo="reportData.spInfo" :stats="reportData.stats" :phi="reportData.phi"
-        :b27_list="reportData.b27_list" :stdDeviation="reportData.stdDeviation" :_plugin="reportData._plugin"
-        :Version="reportData.Version" />
+      <B27Report v-if="filteredReportData && !isLoadingImages" 
+        :mode="filteredReportData.gameuser.mode" 
+        :gameuser="filteredReportData.gameuser"
+        :formattedDate="filteredReportData.Date" 
+        :spInfo="filteredReportData.spInfo" 
+        :stats="filteredReportData.stats" 
+        :phi="filteredReportData.phi"
+        :b27_list="filteredReportData.b27_list" 
+        :stdDeviation="filteredReportData.stdDeviation" 
+        :_plugin="filteredReportData._plugin"
+        :Version="filteredReportData.Version" />
       <div v-else-if="!isQuerying && !error && !reportData" class="status-placeholder">
         请点击"查询全部记录"。
       </div>
@@ -76,9 +235,9 @@ useHead({
     { name: 'twitter:card', content: 'summary_large_image' },
   ]
 })
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import domtoimage from 'dom-to-image-more';
-import B27Report from '~/components/B27.vue';
+import B27Report from '~/components/AllRecords.vue';
 import Cookies from 'js-cookie';
 
 // 导入共享的工具函数
@@ -112,6 +271,119 @@ const publicLink = ref('');
 const linkCopied = ref(false);
 const linkInput = ref(null);
 
+// 筛选相关状态
+const showFilter = ref(false);
+const filters = ref({
+  score: { min: null, max: null },
+  level: { min: null, max: null },
+  acc: { min: null, max: null },
+  rks: { min: null, max: null },
+  ratings: [],
+  difficulties: []
+});
+
+// 保存原始数据用于筛选
+const originalReportData = ref(null);
+
+// 计算属性：检查是否有活动的筛选条件
+const hasActiveFilters = computed(() => {
+  return filters.value.score.min !== null || filters.value.score.max !== null ||
+         filters.value.level.min !== null || filters.value.level.max !== null ||
+         filters.value.acc.min !== null || filters.value.acc.max !== null ||
+         filters.value.rks.min !== null || filters.value.rks.max !== null ||
+         filters.value.ratings.length > 0 ||
+         filters.value.difficulties.length > 0;
+});
+
+// 计算属性：筛选后的数据
+const filteredReportData = computed(() => {
+  if (!reportData.value || !hasActiveFilters.value) {
+    return reportData.value;
+  }
+
+  // 深拷贝原始数据
+  const filtered = JSON.parse(JSON.stringify(reportData.value));
+  
+  // 筛选 phi 列表和 b27_list
+  const allSongs = [...(filtered.phi || []).filter(s => s), ...(filtered.b27_list || [])];
+  
+  const filteredSongs = allSongs.filter(song => {
+    // 分数筛选
+    if (filters.value.score.min !== null && song.score < filters.value.score.min) return false;
+    if (filters.value.score.max !== null && song.score > filters.value.score.max) return false;
+    
+    // 定数筛选
+    const level = parseFloat(song.difficulty);
+    if (filters.value.level.min !== null && level < filters.value.level.min) return false;
+    if (filters.value.level.max !== null && level > filters.value.level.max) return false;
+    
+    // ACC筛选
+    if (filters.value.acc.min !== null && song.acc < filters.value.acc.min) return false;
+    if (filters.value.acc.max !== null && song.acc > filters.value.acc.max) return false;
+    
+    // RKS筛选
+    if (filters.value.rks.min !== null && song.rks < filters.value.rks.min) return false;
+    if (filters.value.rks.max !== null && song.rks > filters.value.rks.max) return false;
+    
+    // 评级筛选
+    if (filters.value.ratings.length > 0 && !filters.value.ratings.includes(song.Rating)) return false;
+    
+    // 难度筛选
+    if (filters.value.difficulties.length > 0 && !filters.value.difficulties.includes(song.rank)) return false;
+    
+    return true;
+  });
+  
+  // 重新排序并编号
+  filteredSongs.sort((a, b) => b.rks - a.rks);
+  filteredSongs.forEach((song, index) => {
+    song.num = index + 1;
+  });
+  
+  filtered.b27_list = filteredSongs;
+  filtered.spInfo = `筛选结果 (共 ${filteredSongs.length} 首)`;
+  
+  return filtered;
+});
+
+// 计算筛选后的歌曲数量
+const filteredCount = computed(() => {
+  if (!filteredReportData.value) return 0;
+  const phiCount = (filteredReportData.value.phi || []).filter(s => s).length;
+  const b27Count = (filteredReportData.value.b27_list || []).length;
+  return phiCount + b27Count;
+});
+
+// 计算总歌曲数量
+const totalCount = computed(() => {
+  if (!reportData.value) return 0;
+  const phiCount = (reportData.value.phi || []).filter(s => s).length;
+  const b27Count = (reportData.value.b27_list || []).length;
+  return phiCount + b27Count;
+});
+
+// 切换筛选面板
+const toggleFilter = () => {
+  showFilter.value = !showFilter.value;
+};
+
+// 重置筛选条件
+const resetFilters = () => {
+  filters.value = {
+    score: { min: null, max: null },
+    level: { min: null, max: null },
+    acc: { min: null, max: null },
+    rks: { min: null, max: null },
+    ratings: [],
+    difficulties: []
+  };
+};
+
+// 应用筛选（实时筛选，computed会自动更新）
+const applyFilters = () => {
+  // 这里可以添加额外的逻辑，比如保存筛选条件到localStorage
+};
+
 const goHome = () => {
   navigateTo('/')
 }
@@ -125,6 +397,7 @@ const queryAllRecords = async () => {
   isQuerying.value = true;
   error.value = null;
   reportData.value = null;
+  originalReportData.value = null;
 
   try {
     const apiData = await fetchData("Allreport");
@@ -167,32 +440,17 @@ const queryAllRecords = async () => {
       num: index + 1,
     }));
 
-    const phiSongs = [];
-    const otherSongs = [];
-
-    transformedRecords.forEach(song => {
-      if (phiSongs.length < 3 && song.Rating === 'phi') {
-        phiSongs.push(song);
-      } else {
-        otherSongs.push(song);
-      }
-    });
-
-    while (phiSongs.length < 3) {
-      phiSongs.push(null);
-    }
-
     const finalData = {
       gameuser,
       Date: formattedDate,
       spInfo: `全部记录 (共 ${allRecords.length} 首)`,
       stats,
-      phi: phiSongs,
-      b27_list: otherSongs,
+      b27_list: transformedRecords,
       _plugin: 'Generated by RKS',
     };
 
     reportData.value = finalData;
+    originalReportData.value = JSON.parse(JSON.stringify(finalData));
 
     const imageUrls = collectImageUrls(finalData);
     await preloadImages(imageUrls, isLoadingImages, loadedImages, totalImages, imageLoadProgress);
@@ -207,7 +465,7 @@ const queryAllRecords = async () => {
 
 const exportAsImage = async () => {
   const node = reportContainerRef.value;
-  if (!node || !reportData.value) {
+  if (!node || !filteredReportData.value) {
     alert('没有可导出的全部记录内容！');
     return;
   }
@@ -276,7 +534,8 @@ const exportAsImage = async () => {
     const link = document.createElement('a');
     link.href = dataUrl;
     const extension = format === 'jpeg' ? 'jpg' : 'png';
-    link.download = `Phigros-AllRecords-${reportData.value.gameuser.PlayerId}-${reportData.value.gameuser.rks.toFixed(4)}-${reportData.value.Date}.${extension}`;
+    const filterInfo = hasActiveFilters.value ? '-Filtered' : '';
+    link.download = `Phigros-AllRecords${filterInfo}-${filteredReportData.value.gameuser.PlayerId}-${filteredReportData.value.gameuser.rks.toFixed(4)}-${filteredReportData.value.Date}.${extension}`;
 
     // 添加到DOM并触发下载
     document.body.appendChild(link);
@@ -303,7 +562,7 @@ const exportAsImage = async () => {
 };
 
 const createPublicLink = () => {
-  if (!reportData.value) {
+  if (!filteredReportData.value) {
     alert('请先查询全部记录！');
     return;
   }
@@ -312,7 +571,8 @@ const createPublicLink = () => {
     // 创建要分享的数据（精简版本，去除不必要的信息）
     const shareData = {
       timestamp: new Date().toISOString(),
-      data: reportData.value
+      data: filteredReportData.value,
+      filters: hasActiveFilters.value ? filters.value : null
     };
 
     // 将数据压缩并编码
@@ -386,6 +646,13 @@ const loadFromShareLink = async () => {
 
       if (importedData.data) {
         reportData.value = importedData.data;
+        originalReportData.value = JSON.parse(JSON.stringify(importedData.data));
+
+        // 如果有筛选条件，也加载筛选条件
+        if (importedData.filters) {
+          filters.value = importedData.filters;
+          showFilter.value = true;
+        }
 
         // 收集并预加载所有图片
         const imageUrls = collectImageUrls(importedData.data);
@@ -483,6 +750,7 @@ body {
   border-radius: 5px;
   transition: background-color 0.3s;
   white-space: nowrap;
+  position: relative;
 }
 
 .controls-wrapper button:hover {
@@ -494,6 +762,132 @@ body {
   cursor: not-allowed;
 }
 
+/* 筛选按钮样式 */
+.filter-button {
+  background-color: #17a2b8 !important;
+}
+
+.filter-button:hover {
+  background-color: #138496 !important;
+}
+
+.filter-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #dc3545;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* 筛选面板样式 */
+.filter-panel {
+  width: 1200px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filter-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.reset-button {
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.reset-button:hover {
+  background-color: #5a6268;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: bold;
+  color: #555;
+}
+
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.range-inputs input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.range-inputs span {
+  color: #666;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: normal;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.checkbox-group label:hover {
+  background-color: #e9ecef;
+}
+
+.checkbox-group input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.filter-summary {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #666;
+}
 
 .status-placeholder {
   display: flex;
@@ -688,6 +1082,10 @@ body {
   .controls-wrapper button {
     width: 100%;
     max-width: 300px;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 }
 
