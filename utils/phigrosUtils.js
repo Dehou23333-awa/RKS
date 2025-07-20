@@ -87,7 +87,7 @@ export const fetchData = async (op) => {
   const response = await fetch(`/api/query?action=${op}`);
   if (!response.ok) {
     const errData = await response.json();
-    throw new Error(`API action '${action}' failed: ${errData.body || response.statusText}`);
+    throw new Error(`API action '${op}' failed: ${errData.body || response.statusText}`);
   }
   return response.json();
 };
@@ -141,8 +141,11 @@ export const preloadImages = async (imageUrls, isLoadingImages, loadedImages, to
 
 export const collectImageUrls = (data) => {
   const urls = [];
+  if (data.gameuser?.avatar) {
+    urls.push(getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/avatar/${data.gameuser.avatar.id}.png`));
+  }
   if (data.gameuser?.background) {
-    urls.push(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${data.gameuser.background.id}.png`);
+    urls.push(getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationBlur/${data.gameuser.background.id}.png`));
   }
   if (data.phi) {
     data.phi.forEach(song => {

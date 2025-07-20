@@ -7,7 +7,7 @@
             <div class="playerInfo">
                 <div class="blackBlock"></div>
                 <div class="avatar">
-                    <img :src="`/b27/avatar/${gameuser.avatar}.png`" :alt="gameuser.avatar">
+                    <img :src="getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/avatar/${gameuser.avatar}.png`)">
                 </div>
                 <div class="playerId">
                     <p name="pvis">{{ gameuser.PlayerId }}</p>
