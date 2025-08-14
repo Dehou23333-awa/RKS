@@ -1,5 +1,8 @@
 name: Sync Phigros Assets
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '5 9 * * *' # UTC时间，等同于北京时间17:05
