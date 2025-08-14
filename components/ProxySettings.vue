@@ -115,7 +115,19 @@ const handleCancel = () => {
 
 const applyProxy = (url) => {
   if (!currentProxyUrl.value || !url) return url
-  if (url.includes('github.com') || url.includes('githubusercontent.com')) {
+
+  // 允许的主机名列表
+  const allowedHosts = ['github.com', 'githubusercontent.com']
+  function isAllowedHost(url) {
+    try {
+      const { hostname } = new URL(url)
+      return allowedHosts.some(host => hostname === host || hostname.endsWith('.' + host))
+    } catch {
+      return false
+    }
+  }
+
+  if (isAllowedHost(url)) {
     return currentProxyUrl.value + url
   }
   return url
