@@ -1,82 +1,106 @@
-# RKS (Phigros 存档管理器)
+# Phigros RKS 查询器
 
-一个基于 Nuxt 3 构建的网页应用，用于管理 Phigros 游戏的存档。它提供了 TapTap 登录、查看存档摘要和歌曲记录（包括 B27），以及上传 `save.zip` 存档文件的功能。
+这是一个为音乐游戏 Phigros 设计的非官方玩家数据查询与分析工具。项目基于 Nuxt.js 3 构建，允许玩家通过登录或上传存档文件来查看自己的游戏记录、计算 RKS (B27)、生成成绩分享图等。
 
-## ✨ 功能特性
+## ✨ 核心功能
 
-*   **TapTap 登录:** 通过 TapTap 设备码流程进行安全登录，获取 Session Token。
-*   **查看存档摘要:** 获取并显示当前 TapTap 账号下的 Phigros 存档摘要信息，包括存档版本、课题、RKS、游戏版本、头像和各难度等级数据。
-*   **生成存档摘要:** 根据修改后的参数重新生成 Base64 编码的存档摘要。 
-*   **查看歌曲记录:** 获取并解析存档中的歌曲记录，计算并显示 B27 数据和完整的歌曲成绩列表。
-*   **上传存档文件:** 将本地的 `save.zip` 文件上传到游戏服务器，需要 Session Token 和生成的存档摘要。
-*   **存档文件解析与构建:** 后端包含用于解析和构建 Phigros 存档文件（如 `gameRecord`, `user`, `settings` 等）的工具函数。
+- **玩家登录**：通过 Phigros 账户绑定的 TapTap 登录，从官方服务器安全获取游戏存档。
+- **RKS (B27) 计算**：自动计算并展示对 RKS 贡献最高的 27 首歌曲（Best 27）的详细信息。
+- **成绩单生成**：一键生成 B27 成绩的分享图，方便玩家在社交媒体上展示。
+- **全曲目成绩查询**：浏览玩家在所有歌曲中的最佳成绩、ACC、FC/AP 状态等。
+- **歌曲信息浏览**：提供游戏内所有曲目的定数、谱师、插画师等信息。
+- **存档构建**：允许在分析后重新构建存档文件（高级功能）。
 
-## 🛠️ 使用技术
+## 🚀 技术栈
 
-*   **前端框架：** Vue 3 (Composition API)
-*   **元框架：** Nuxt 3
-*   **HTTP 客户端：** Axios, Fetch API
-*   **文件压缩/解压：** JSZip (用于处理 `save.zip`)
-*   **加密：** Node.js `crypto` 模块 (AES 解密)
-*   **云存储交互：** Qiniu SDK, Axios (通过 TapTap/LeanCloud API)
+- **前端**:
+  - [Vue 3](https://vuejs.org/)
+  - [Nuxt 3](https://nuxt.com/)
+- **后端**:
+  - [Nuxt 3 Server Routes](https://nuxt.com/docs/guide/directory-structure/server)
+  - [TypeScript](https://www.typescriptlang.org/)
+- **核心依赖**:
+  - `axios` / `node-fetch`: 用于执行 HTTP 请求。
+  - `jszip`: 用于解析和创建 Zip 存档文件。
+  - `dom-to-image-more`: 用于将前端成绩展示 DOM 转换为图片。
+  - `file-saver`: 用于在浏览器端保存文件。
+- **部署**:
+  - 设计为在 [Cloudflare Workers](https://workers.cloudflare.com/) 上进行 Serverless 部署。
 
-## 依赖项目参考
+## 📂 项目结构
 
-本项目在开发过程中参考了以下开源项目：
+```
+.
+├───assets              # 静态资源，如自定义 CSS
+├───components          # 可复用的 Vue 组件
+├───layouts             # 布局文件
+├───pages               # 应用页面与路由
+│   ├───login.vue       # 登录页
+│   ├───upload.vue      # 存档上传页
+│   ├───b27.vue         # B27 成绩展示页
+│   └───...
+├───public              # 公共文件，如 favicon 和字体
+├───server              # 后端逻辑
+│   ├───api             # API 接口
+│   │   ├───login.ts    # 登录逻辑
+│   │   ├───get-save.post.ts # 获取存档
+│   │   └───...
+│   └───utils           # 后端工具函数（如存档加解密、解析器）
+├───utils               # 前端工具函数
+├───nuxt.config.ts      # Nuxt 配置文件
+└───package.json        # 项目依赖与脚本
+```
 
-*   **PhigrosLibrary:** `https://github.com/7aGiven/PhigrosLibrary` - 提供了关于 RKS 查询解密和存档上传的参考实现。
-*   **Phi-CloudAction-python:** `https://github.com/wms26/Phi-CloudAction-python` - 提供了关于 Phigros 存档文件解密和加密的参考实现。
+## 本地开发与部署
 
-## 🚀 快速开始 (本地开发)
+### 1. 环境准备
 
-请确保您已安装 Node.js 和 npm/yarn/pnpm/bun。
+- [Node.js](https://nodejs.org/en/) (建议使用 LTS 版本)
+- [npm](https://www.npmjs.com/) (通常随 Node.js 一起安装)
 
-1.  **安装依赖：**
+### 2. 安装依赖
 
-    ```bash
-    # npm
-    npm install
+克隆项目到本地，然后在项目根目录下执行以下命令：
 
-    # pnpm
-    pnpm install
+```bash
+npm install
+```
 
-    # yarn
-    yarn install
+### 3. 启动开发服务器
 
-    # bun
-    bun install
-    ```
+执行以下命令以启动本地开发服务器，默认访问地址为 `http://localhost:3000`。
 
-2.  **运行开发服务器：**
+```bash
+npm run dev
+```
 
-    ```bash
-    # npm
-    npm run dev
+### 4. 构建与部署
 
-    # pnpm
-    pnpm dev
+#### 构建项目
 
-    # yarn
-    yarn dev
+执行以下命令来为生产环境构建应用：
 
-    # bun
-    bun run dev
-    ```
+```bash
+npm run build
+```
+该命令会将编译后的文件输出到 `.output` 目录。
 
-    应用将在 `http://localhost:3000` 运行。
+#### 启动生产服务器
 
-## 📝 使用说明
+构建完成后，可以执行以下命令来启动生产模式的本地服务器：
 
-1.  **登录:** 访问登录页面 ，点击按钮生成设备码并扫描二维码在 TapTap 客户端授权。成功后 Session Token 将保存在 Cookie 中。
-2.  **查看存档/B27:** 访问查询页面，Session Token 会自动从 Cookie 读取。点击按钮获取并显示存档摘要和歌曲记录。
-3.  **上传存档:** 访问上传页面 ，Session Token 会自动从 Cookie 读取。您可以查看当前存档摘要，修改参数后点击“生成 Base64 存档摘要”，然后选择本地的 `save.zip` 文件，最后点击“上传存档”。
+```bash
+npm run start
+```
 
-## ⚠️ 注意事项与免责声明
+## ⚠️ 免责与使用声明
 
-*   存档文件的解析和构建基于对游戏内部结构的理解，如果游戏更新导致存档结构变化，可能需要更新解析和构建逻辑。
-*   上传功能会覆盖游戏服务器上的现有存档，请谨慎操作。
-*   **本项目的存档修改功能仅供技术研究和学习使用，严禁用于任何商业用途或违反游戏服务条款的行为。**
-*   **请勿将修改后的存档用于任何形式的作弊或不正当行为。**
-*   **本项目不保证存档修改的正确性和安全性，使用前请务必备份原始存档文件。**
-*   **严禁将修改后的存档上传到游戏服务器或用于任何其他目的，包括但不限于获取不正当利益、破坏游戏平衡等。**
-*   **因使用本项目进行存档修改而产生的一切后果，由使用者自行承担，本项目作者不承担任何责任**
+- **严禁用于作弊**：本工具旨在方便玩家进行数据分析、备份和管理，**严禁用于修改游戏数据以获取不公平优势（作弊）**。任何通过修改存档伪造成绩、解锁内容的行为都严重违反了游戏的用户协议。**此类行为可能导致您的游戏账户被封禁**，请珍惜您的游戏账号。
+
+- **非官方项目**：本工具为爱好者开发，与 Phigros 官方（Pigeon Games）无关。
+
+- **潜在风险**：本项目包含**修改和重新打包游戏存档**的功能。使用这些功能可能存在风险，包括但不限于**存档损坏、数据丢失、游戏无法正常读取存档或未知的账户问题**。
+
+- **数据备份**：**请在执行任何存档修改操作前，务必备份您的原始存档文件！**
+
+- **责任声明**：本项目开发者不对任何因使用（或滥用）本工具而造成的直接或间接损失负责。**所有功能请您自行承担风险**。
