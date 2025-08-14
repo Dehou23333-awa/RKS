@@ -1,0 +1,26 @@
+name: Sync Phigros Assets
+
+on:
+  schedule:
+    - cron: '5 9 * * *' # UTC时间，等同于北京时间17:05
+  workflow_dispatch:
+
+jobs:
+  sync-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download info.tsv
+        run: curl -L -o assets/info.tsv https://raw.githubusercontent.com/7aGiven/Phigros_Resource/info/info.tsv
+
+      - name: Download difficulty.tsv
+        run: curl -L -o assets/difficulty.tsv https://raw.githubusercontent.com/7aGiven/Phigros_Resource/info/difficulty.tsv
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/info.tsv assets/difficulty.tsv
+          git diff --cached --quiet || (git commit -m "Phigros[bot] Sync Phigros resources" && git push)
