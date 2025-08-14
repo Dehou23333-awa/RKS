@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download info.tsv
         run: curl -L -o server/assets/info.tsv https://raw.githubusercontent.com/7aGiven/Phigros_Resource/info/info.tsv
@@ -19,8 +21,10 @@ jobs:
         run: curl -L -o server/assets/difficulty.tsv https://raw.githubusercontent.com/7aGiven/Phigros_Resource/info/difficulty.tsv
 
       - name: Commit and push if changed
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
+          git config --global user.name "Phigros[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server/assets/info.tsv server/assets/difficulty.tsv
-          git diff --cached --quiet || (git commit -m "Phigros[bot] Sync Phigros resources" && git push)
+          git diff --cached --quiet || (git commit -m "Phigros[bot] Sync Phigros resources" && git push https://Phigros[bot]:$GH_TOKEN@github.com/Dehou23333-awa/RKS.git main)
