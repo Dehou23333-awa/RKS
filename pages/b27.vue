@@ -181,34 +181,42 @@ const generateReport = async () => {
       { title: 'AT', cleared: summaryData.AT[0], fc: summaryData.AT[1], phi: summaryData.AT[2] },
     ];
 
-    const phiSongs = [];
-    const b27Songs = [];
-    let b27Counter = 0;
-    let p3Rks = [];
+    // 先转换所有歌曲数据
+    const allTransformedSongs = b27Data.map(song => ({
+      song: song.songName,
+      illustration: getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`),
+      rank: song.level,
+      difficulty: song.difficulty,
+      rks: song.rks,
+      Rating: getCachedRating(song.score, song.fc),
+      score: song.score,
+      acc: song.acc,
+    }));
 
-    b27Data.forEach((song, index) => {
-      const transformedSong = {
-        song: song.songName,
-        illustration: getProxiedUrl(`https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/illustrationLowRes/${song.songId}.png`),
-        rank: song.level,
-        difficulty: song.difficulty,
-        rks: song.rks,
-        Rating: getCachedRating(song.score, song.fc),
-        score: song.score,
-        acc: song.acc,
+    // P3 独立计算：从所有歌曲中筛选 Phi 评价的，按 RKS 排序取前3
+    const phiSongs = allTransformedSongs
+      .filter(song => song.Rating === 'phi')
+      .sort((a, b) => b.rks - a.rks)
+      .slice(0, 3);
+    
+    const p3Rks = phiSongs.map(song => song.rks);
+
+    // B27 独立计算：从所有歌曲中按 RKS 排序取前27
+    const b27Songs = allTransformedSongs
+      .sort((a, b) => b.rks - a.rks)
+      .slice(0, 27)
+      .map((song, index) => ({
+        ...song,
+        num: index + 1,
         suggest: getSuggest(song.acc, summaryData.rks, song.difficulty, p3Rks),
-      };
+      }));
 
-      if (index < 3 && transformedSong.Rating === 'phi') {
-        phiSongs.push(transformedSong);
-        p3Rks.push(transformedSong.rks);
-      } else {
-        b27Counter++;
-        transformedSong.num = b27Counter;
-        b27Songs.push(transformedSong);
-      }
+    // 为 phiSongs 也添加 suggest
+    phiSongs.forEach(song => {
+      song.suggest = getSuggest(song.acc, summaryData.rks, song.difficulty, p3Rks);
     });
 
+    // 如果 Phi 歌曲不足3首，补充 null
     while (phiSongs.length < 3) {
       phiSongs.push(null);
     }
