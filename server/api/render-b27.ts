@@ -339,11 +339,19 @@ let fontDataCache: ArrayBuffer | null = null
 async function loadFont(): Promise<ArrayBuffer> {
   if (fontDataCache) return fontDataCache
   
-  // Load Noto Sans for CJK support from Google Fonts
-  const fontUrl = 'https://cdn.jsdelivr.net/gh/AoEiuV020/w3/resources/fonts/NotoSansSC-Medium.otf'
+  // Load Noto Sans SC for CJK support from Google Fonts CDN
+  // Using a reliable CDN endpoint
+  const fontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2'
   const response = await fetch(fontUrl)
   if (!response.ok) {
-    throw new Error('Failed to load font')
+    // Fallback to a simpler font if Noto Sans fails
+    const fallbackUrl = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf'
+    const fallbackResponse = await fetch(fallbackUrl)
+    if (!fallbackResponse.ok) {
+      throw new Error('Failed to load font from all sources')
+    }
+    fontDataCache = await fallbackResponse.arrayBuffer()
+    return fontDataCache
   }
   fontDataCache = await response.arrayBuffer()
   return fontDataCache
