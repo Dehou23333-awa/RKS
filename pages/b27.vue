@@ -10,6 +10,9 @@
       <button @click="exportAsImage" :disabled="isExporting || !reportData">
         {{ isExporting ? (isMobileDevice ? '导出中(请耐心等待)...' : '正在导出...') : '导出为图片' }}
       </button>
+      <button @click="downloadServerSVG" :disabled="isDownloadingSVG" class="server-export-btn">
+        {{ isDownloadingSVG ? '生成中...' : '服务器端导出(SVG)' }}
+      </button>
       <button @click="createPublicLink" :disabled="!reportData">创建公开链接</button>
       <button @click="showProxySettings = true" class="settings-btn" title="GitHub 代理设置">
         ⚙️ 代理设置
@@ -100,6 +103,7 @@ const reportContainerRef = ref(null);
 const reportData = ref(null);
 const isLoading = ref(false);
 const isExporting = ref(false);
+const isDownloadingSVG = ref(false);
 const error = ref(null);
 const isMobileDevice = ref(false);
 
@@ -341,6 +345,48 @@ const exportAsImage = async () => {
   }
 };
 
+// 从服务器下载SVG图片
+const downloadServerSVG = async () => {
+  isDownloadingSVG.value = true;
+  try {
+    const response = await fetch('/api/render-b27');
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.message || response.statusText);
+    }
+    
+    // Get the SVG content
+    const svgContent = await response.text();
+    
+    // Create blob and download
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Extract filename from Content-Disposition header if available
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'B27.svg';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('下载SVG失败:', err);
+    alert(`下载失败: ${err.message}`);
+  } finally {
+    isDownloadingSVG.value = false;
+  }
+};
+
 const createPublicLink = () => {
   if (!reportData.value) {
     alert('请先生成B27成绩！');
@@ -542,6 +588,14 @@ body {
 
 .settings-btn:hover {
   background-color: #5a6268 !important;
+}
+
+.server-export-btn {
+  background-color: #28a745 !important;
+}
+
+.server-export-btn:hover {
+  background-color: #218838 !important;
 }
 
 .status-placeholder {
