@@ -7,9 +7,12 @@ export default defineNuxtConfig({
   modules: [],
   nitro: {
     preset: 'cloudflare-module',
+    compatibilityDate: '2024-09-23',
     cloudflare: {
       wrangler: {
-        name: 'dehou23333-awa-rks'
+        name: 'dehou23333-awa-rks',
+        compatibility_flags: ['nodejs_compat'],
+        compatibility_date: '2024-09-23'
       }
     }
   },
