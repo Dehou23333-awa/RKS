@@ -193,18 +193,17 @@ const generateReport = async () => {
       acc: song.acc,
     }));
 
-    // P3 独立计算：从所有歌曲中筛选 Phi 评价的，按 RKS 排序取前3
+    // 1. 遍历所有歌曲，找到 rating=phi，取前三个
     const phiSongs = allTransformedSongs
       .filter(song => song.Rating === 'phi')
-      .sort((a, b) => b.rks - a.rks)
       .slice(0, 3);
     
     const p3Rks = phiSongs.map(song => song.rks);
 
-    // B27 独立计算：从所有歌曲中按 RKS 排序取前27
+    // 2. 遍历所有歌曲，按照 rks 从高到低排序，取前 33（#1-#33）
     const b27Songs = allTransformedSongs
       .sort((a, b) => b.rks - a.rks)
-      .slice(0, 27)
+      .slice(0, 33)
       .map((song, index) => ({
         ...song,
         num: index + 1,
