@@ -1,5 +1,6 @@
 import { getGitInfo } from './utils/git-info.js'
 const gitInfo = getGitInfo()
+const CLOUDFLARE_COMPATIBILITY_DATE = '2024-09-23'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
@@ -7,12 +8,12 @@ export default defineNuxtConfig({
   modules: [],
   nitro: {
     preset: 'cloudflare-module',
-    compatibilityDate: '2024-09-23',
+    compatibilityDate: CLOUDFLARE_COMPATIBILITY_DATE,
     cloudflare: {
       wrangler: {
         name: 'dehou23333-awa-rks',
         compatibility_flags: ['nodejs_compat'],
-        compatibility_date: '2024-09-23'
+        compatibility_date: CLOUDFLARE_COMPATIBILITY_DATE
       }
     }
   },
