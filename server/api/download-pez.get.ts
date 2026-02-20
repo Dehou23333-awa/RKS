@@ -56,7 +56,7 @@ Charter: ${chart.charter}`
     try {
         const [musicData, illustrationData, chartData] = await Promise.all([
             fetchFile(musicUrl),
-            fetchFile(illustrationUrl).catch(() => null),
+            fetchFile(illustrationUrl).catch((err) => { console.warn(`Failed to fetch illustration: ${err.message}`); return null; }),
             fetchFile(chartUrl)
         ])
 
