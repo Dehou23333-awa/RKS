@@ -48,11 +48,6 @@
             <div class="song-illustration">
               <img :src="getIllustrationUrl(song.id)" :alt="`${song.name} 曲绘`" class="illustration-img"
                 @error="handleImageError" loading="lazy" />
-              <div class="play-overlay" @click.stop="toggleMusic(song)">
-                <div class="play-btn" :class="{ playing: currentPlayingSong?.id === song.id && !musicPaused }">
-                  {{ currentPlayingSong?.id === song.id && !musicPaused ? '⏸️' : '▶️' }}
-                </div>
-              </div>
             </div>
 
             <div class="song-header">
@@ -65,18 +60,14 @@
 
             <div class="charts-container">
               <div v-for="(chart, difficulty) in song.charts" :key="difficulty" class="chart-item" :class="{
-                'has-chart': chart,
-                'downloading': downloadingSongs[`${song.id}-${difficulty}`]
-              }" @click="chart && downloadSong(song, difficulty)">
+                'has-chart': chart
+              }" @click="chart && downloadSong(song.id, difficulty)">
                 <div class="difficulty-label" :class="`difficulty-${difficulty.toLowerCase()}`">
                   {{ difficulty }}
                 </div>
                 <div v-if="chart" class="chart-info">
                   <span class="difficulty-number">{{ chart.difficulty || '-' }}</span>
                   <span class="charter" :title="chart.charter || '未知'">{{ chart.charter || '未知' }}</span>
-                  <div v-if="downloadingSongs[`${song.id}-${difficulty}`]" class="download-indicator">
-                    ⏳
-                  </div>
                 </div>
                 <div v-else class="no-chart">-</div>
               </div>
@@ -109,54 +100,6 @@
         </div>
       </div>
     </main>
-
-    <!-- 音乐播放器 -->
-    <div v-if="currentPlayingSong" class="music-player">
-      <div class="player-content">
-        <div class="player-info">
-          <img :src="getIllustrationUrl(currentPlayingSong.id)" :alt="`${currentPlayingSong.name} 曲绘`"
-            class="player-illustration" @error="handleImageError" />
-          <div class="player-text">
-            <div class="player-title">{{ currentPlayingSong.name }}</div>
-            <div class="player-composer">{{ currentPlayingSong.composer }}</div>
-          </div>
-        </div>
-
-        <div class="player-controls">
-          <button @click="toggleMusic(currentPlayingSong)" class="control-btn play-pause">
-            {{ musicPaused ? '▶️' : '⏸️' }}
-          </button>
-          <button @click="stopMusic" class="control-btn stop">⏹️</button>
-        </div>
-
-        <div class="player-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: musicProgress + '%' }"></div>
-            <input type="range" min="0" max="100" v-model="musicProgress" @input="seekMusic" class="progress-slider" />
-          </div>
-          <div class="time-display">
-            {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
-          </div>
-        </div>
-
-        <div class="volume-control">
-          <span class="volume-icon">🔊</span>
-          <input type="range" min="0" max="100" v-model="volume" @input="setVolume" class="volume-slider" />
-        </div>
-      </div>
-    </div>
-
-    <!-- 音频元素 -->
-    <audio ref="audioPlayer" @loadedmetadata="onAudioLoaded" @timeupdate="onTimeUpdate" @ended="onAudioEnded"
-      @error="onAudioError" preload="none"></audio>
-
-    <!-- 下载进度提示 -->
-    <div v-if="Object.keys(downloadProgress).length > 0" class="download-toast">
-      <div v-for="(progress, songKey) in downloadProgress" :key="songKey" class="download-item">
-        <span>{{ progress.name }}</span>
-        <span>{{ progress.percent }}%</span>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -164,52 +107,23 @@
 useHead({
   title: 'Phigros 全曲目浏览 | RKS',
   meta: [
-    { name: 'description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。支持搜索和试听功能。' },
+    { name: 'description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。' },
     { name: 'keywords', content: 'Phigros,曲目列表,歌曲下载,谱面预览,音游曲库' },
     { property: 'og:title', content: 'Phigros 全曲目浏览 | RKS' },
-    { property: 'og:description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。支持搜索和试听功能。' },
+    { property: 'og:description', content: '浏览 Phigros 全部曲目，查看歌曲信息、难度、谱面和下载资源。' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },
   ]
 })
-import JSZip from 'jszip'
-import { saveAs } from 'file-saver'
 import ProxySettings from '~/components/ProxySettings.vue'
 
 const searchTerm = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 
-// 下载相关状态
-const downloadingSongs = ref({})
-const downloadProgress = ref({})
-
 // 代理设置状态
 const showProxySettings = ref(false)
 const proxySettingsRef = ref(null)
-
-// 运行时配置
-const config = useRuntimeConfig()
-const githubApiToken = config.public.githubToken
-const userAgentString = 'Dehou23333-awa/RKS'
-
-// 音乐播放相关
-const audioPlayer = ref(null)
-const currentPlayingSong = ref(null)
-const musicPaused = ref(true)
-const currentTime = ref(0)
-const duration = ref(0)
-const volume = ref(50)
-const musicProgress = computed({
-  get: () => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0,
-  set: (value) => {
-    if (audioPlayer.value && duration.value > 0) {
-      const time = (value / 100) * duration.value
-      audioPlayer.value.currentTime = time
-      currentTime.value = time
-    }
-  }
-})
 
 // 处理代理设置保存
 const handleProxySave = (proxyConfig) => {
@@ -257,256 +171,15 @@ const getIllustrationUrl = (songId) => {
   return getProxiedUrl(url)
 }
 
-// 获取音乐URL
-const getMusicUrl = (songId) => {
-  const url = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/music/${songId}.ogg`
-  return getProxiedUrl(url)
-}
-
-// 获取高清曲绘URL
-const getIllustrationHDUrl = async (songId) => {
-  const apiUrl = 'https://api.github.com/repos/7aGiven/Phigros_Resource/git/trees/illustration?recursive=1'
-  const proxiedApiUrl = getProxiedUrl(apiUrl)
-
-  try {
-    const headers = { 'User-Agent': userAgentString }
-    if (githubApiToken) {
-      headers.Authorization = `Bearer ${githubApiToken}`
-    }
-
-    const response = await fetch(proxiedApiUrl, { headers })
-    if (!response.ok) {
-      console.error('Failed to fetch illustration tree:', response.status)
-      return null
-    }
-
-    const data = await response.json()
-
-    if (data.tree) {
-      const foundItem = data.tree.find(item =>
-        item.type === 'blob' &&
-        item.path.startsWith(songId) &&
-        item.path.toLowerCase().endsWith('.png')
-      )
-      if (foundItem) {
-        const url = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/illustration/${foundItem.path}`
-        return getProxiedUrl(url)
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching illustration:', error)
-  }
-  return null
-}
-
-// 获取谱面文件URL
-const getChartUrl = async (songId, difficulty) => {
-  const chartUrl = `https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/chart/${songId}.0/${difficulty}.json`
-  const proxiedUrl = getProxiedUrl(chartUrl)
-
-  try {
-    const response = await fetch(proxiedUrl, { method: 'HEAD' })
-    if (response.ok) {
-      return proxiedUrl
-    }
-  } catch (error) {
-    console.error('Chart file not found:', error)
-  }
-
-  return null
-}
-
 // 处理图片加载错误
 const handleImageError = (event) => {
-  event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZmFmYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNhMGFlYzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7mm7LntrvliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
+  event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y3ZmFmYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNhMGFlYzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7mm7LntLXliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
 }
 
-// 音乐播放控制
-const toggleMusic = async (song) => {
-  if (currentPlayingSong.value?.id === song.id) {
-    if (musicPaused.value) {
-      await audioPlayer.value.play()
-      musicPaused.value = false
-    } else {
-      audioPlayer.value.pause()
-      musicPaused.value = true
-    }
-  } else {
-    if (currentPlayingSong.value) {
-      audioPlayer.value.pause()
-    }
-
-    currentPlayingSong.value = song
-    audioPlayer.value.src = getMusicUrl(song.id)
-
-    try {
-      await audioPlayer.value.load()
-      await audioPlayer.value.play()
-      musicPaused.value = false
-    } catch (error) {
-      console.error('音乐播放失败:', error)
-      alert('音乐文件加载失败，可能该歌曲暂未提供音频文件')
-      currentPlayingSong.value = null
-      musicPaused.value = true
-    }
-  }
+// 下载功能 - 通过服务端打包
+const downloadSong = (songId, difficulty) => {
+  window.open(`/api/download-pez?songId=${encodeURIComponent(songId)}&difficulty=${encodeURIComponent(difficulty)}`, '_blank')
 }
-
-const stopMusic = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.currentTime = 0
-    currentTime.value = 0
-  }
-  currentPlayingSong.value = null
-  musicPaused.value = true
-}
-
-const seekMusic = (event) => {
-  const value = parseFloat(event.target.value)
-  if (audioPlayer.value && duration.value > 0) {
-    const time = (value / 100) * duration.value
-    audioPlayer.value.currentTime = time
-  }
-}
-
-const setVolume = () => {
-  if (audioPlayer.value) {
-    audioPlayer.value.volume = volume.value / 100
-  }
-}
-
-// 音频事件处理
-const onAudioLoaded = () => {
-  duration.value = audioPlayer.value.duration || 0
-  setVolume()
-}
-
-const onTimeUpdate = () => {
-  currentTime.value = audioPlayer.value.currentTime || 0
-}
-
-const onAudioEnded = () => {
-  musicPaused.value = true
-  currentTime.value = 0
-}
-
-const onAudioError = (error) => {
-  console.error('音频加载错误:', error)
-  currentPlayingSong.value = null
-  musicPaused.value = true
-}
-
-// 时间格式化
-const formatTime = (seconds) => {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-// 下载功能
-const fetchAndAddFileToZip = async (zipInstance, url, fileNameInZip, friendlyName, isOptional = false) => {
-  if (!url) {
-    if (!isOptional) {
-      throw new Error(`${friendlyName} URL is not available.`)
-    } else {
-      console.log(`Optional file ${friendlyName} URL not found, skipping.`)
-      return
-    }
-  }
-
-  console.log(`Fetching ${friendlyName}: ${url}`)
-  try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`Status: ${response.status} ${response.statusText}`)
-    }
-    const blob = await response.blob()
-    zipInstance.file(fileNameInZip, blob)
-    console.log(`Added ${fileNameInZip} to zip.`)
-  } catch (error) {
-    if (!isOptional) {
-      throw new Error(`Failed to fetch ${friendlyName}: ${error.message}`)
-    } else {
-      console.warn(`Warning: Could not fetch optional file ${friendlyName} (${url}): ${error.message}. Continuing without it.`)
-    }
-  }
-}
-
-const downloadSong = async (song, difficulty) => {
-  const downloadKey = `${song.id}-${difficulty}`;
-  if (downloadingSongs.value[downloadKey]) return;
-
-  downloadingSongs.value[downloadKey] = true;
-  downloadProgress.value[downloadKey] = { name: `${song.name} (${difficulty})`, percent: 0 };
-
-  const zip = new JSZip();
-
-  try {
-    const selectedChart = song.charts[difficulty];
-    if (!selectedChart) throw new Error('Selected chart not found');
-
-    // 生成info.txt
-    const infoTxtContent = `#
-Name: ${song.name}
-Song: ${song.id}.ogg
-Picture: ${song.id}.png
-Chart: ${difficulty}.json
-Level: ${difficulty} Lv.${selectedChart.difficulty}
-Composer: ${song.composer}
-Illustrator: ${song.illustrator}
-Charter: ${selectedChart.charter}`;
-
-    zip.file("info.txt", infoTxtContent);
-    downloadProgress.value[downloadKey].percent = 20;
-
-    // 下载音乐文件
-    await fetchAndAddFileToZip(zip, getMusicUrl(song.id), `${song.id}.ogg`, 'music file');
-    downloadProgress.value[downloadKey].percent = 40;
-
-    // 尝试获取高清曲绘，如果失败则使用低清曲绘
-    let illustrationUrl = await getIllustrationHDUrl(song.id);
-    if (!illustrationUrl) {
-      // 如果高清曲绘不存在，使用低清曲绘
-      illustrationUrl = getIllustrationUrl(song.id);
-    }
-
-    // 添加曲绘文件
-    await fetchAndAddFileToZip(zip, illustrationUrl, `${song.id}.png`, 'illustration file', true);
-    downloadProgress.value[downloadKey].percent = 60;
-
-    // 下载谱面文件
-    const chartUrl = await getChartUrl(song.id, difficulty);
-    await fetchAndAddFileToZip(zip, chartUrl, `${difficulty}.json`, 'chart file');
-    downloadProgress.value[downloadKey].percent = 80;
-
-    // 生成PEZ文件
-    const zipFileName = `${song.id}.${difficulty}.pez`;
-    const zipBlob = await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 9 }
-    }, (metadata) => {
-      downloadProgress.value[downloadKey].percent = 80 + Math.floor(metadata.percent / 5);
-    });
-
-    saveAs(zipBlob, zipFileName);
-    downloadProgress.value[downloadKey].percent = 100;
-
-    // 清理状态
-    setTimeout(() => {
-      delete downloadProgress.value[downloadKey];
-    }, 3000);
-
-  } catch (error) {
-    console.error('Download error:', error);
-    alert(`下载失败: ${error.message}`);
-    delete downloadProgress.value[downloadKey];
-  } finally {
-    downloadingSongs.value[downloadKey] = false;
-  }
-};
 
 // 分页相关
 const goToPage = (page) => {
@@ -535,19 +208,6 @@ const getPageNumbers = () => {
 
   return pages
 }
-
-// 初始化
-onMounted(() => {
-  setVolume()
-})
-
-// 清理音频
-onUnmounted(() => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.src = ''
-  }
-})
 </script>
 
 <style>
@@ -575,7 +235,7 @@ onUnmounted(() => {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  padding-bottom: 100px; /* Space for the fixed music player */
+  padding-bottom: 2rem;
 }
 
 button {
@@ -761,40 +421,6 @@ button {
   background-color: var(--bg-tertiary); /* Placeholder bg */
 }
 
-.play-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transition: var(--transition-fast);
-  cursor: pointer;
-}
-
-.song-card:hover .play-overlay {
-  opacity: 1;
-}
-
-.play-btn {
-  font-size: 2.5rem;
-  color: white;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-  transition: transform 0.2s;
-}
-
-.play-btn:hover {
-  transform: scale(1.1);
-}
-
-.play-btn.playing {
-  color: var(--accent-primary);
-}
-
 
 .song-header {
   padding: 0.75rem 1rem;
@@ -850,18 +476,6 @@ button {
 
 .chart-item.has-chart:hover {
   background-color: var(--bg-tertiary);
-}
-
-.chart-item.downloading {
-  cursor: wait;
-  background-color: var(--bg-tertiary);
-}
-
-.download-indicator {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  animation: spin 1s linear infinite;
 }
 
 .difficulty-label {
@@ -935,200 +549,6 @@ button {
   white-space: nowrap;
 }
 
-/* --- Music Player --- */
-.music-player {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: rgba(26, 26, 46, 0.9);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border-color);
-  padding: 0.75rem 1.5rem;
-  z-index: 20;
-}
-
-.player-content {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.player-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 250px;
-}
-
-.player-illustration {
-  width: 50px;
-  height: 50px;
-  border-radius: var(--border-radius);
-  object-fit: cover;
-}
-
-.player-text {
-  overflow: hidden;
-}
-
-.player-title {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.player-composer {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.player-controls {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.control-btn {
-  font-size: 1.5rem;
-  padding: 0.5rem;
-  line-height: 1;
-}
-
-.player-progress {
-  flex-grow: 1;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background-color: var(--bg-tertiary);
-  border-radius: 4px;
-  position: relative;
-  cursor: pointer;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: var(--accent-primary);
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.progress-slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  -webkit-appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.progress-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  margin-top: -4px;
-}
-.progress-slider::-moz-range-thumb {
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  border: none;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-}
-
-.time-display {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  width: 80px;
-  text-align: right;
-}
-
-.volume-control {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 150px;
-}
-
-.volume-icon {
-  color: var(--text-secondary);
-}
-
-.volume-slider {
-  width: 100%;
-  -webkit-appearance: none;
-  background: transparent;
-}
-.volume-slider::-webkit-slider-runnable-track {
-  height: 6px;
-  background: var(--bg-tertiary);
-  border-radius: 3px;
-}
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 14px;
-  width: 14px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  margin-top: -4px;
-}
-.volume-slider::-moz-range-track {
-  height: 6px;
-  background: var(--bg-tertiary);
-  border-radius: 3px;
-}
-.volume-slider::-moz-range-thumb {
-  height: 14px;
-  width: 14px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  border: none;
-}
-
-
-/* --- Download Toast --- */
-.download-toast {
-    position: fixed;
-    bottom: 120px; /* Above music player */
-    right: 20px;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.download-item {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    padding: 10px 15px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    min-width: 250px;
-    font-size: 0.9rem;
-    gap: 20px;
-}
-
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
   .header {
@@ -1143,27 +563,6 @@ button {
   .home-btn {
     padding: 0.5rem;
     font-size: 0.8rem;
-  }
-
-  .player-content {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-  }
-  .player-info {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-  }
-  .player-progress {
-    order: 3;
-    width: 100%;
-  }
-  .player-controls {
-    order: 2;
-  }
-  .volume-control {
-    display: none; /* Hide volume on small screens */
   }
 }
 
